@@ -86,6 +86,19 @@ async fn install_one(
         },
     );
 
+    // Record the catalog timestamp we just landed on. The next scan compares
+    // this marker against the addon's current catalog.last_updated — useful
+    // when an author bumps the ESOUI submission but forgets to bump the
+    // `## Version:` line inside the manifest, which would otherwise leave the
+    // row stuck on "Update available" forever.
+    {
+        let conn = state.db.lock().unwrap();
+        if let Ok(Some(addon)) = db::find_by_id(&conn, &addon_id) {
+            let key = format!("installed:{}", addon.id);
+            let _ = db::set_metadata(&conn, &key, &addon.last_updated.to_string());
+        }
+    }
+
     let deps = collect_dependencies(&addons_dir, &extracted)?;
     for dep_dir in deps {
         let dep_path = addons_dir.join(&dep_dir);
@@ -222,6 +235,15 @@ fn collect_dependencies(addons_dir: &Path, dirs: &[String]) -> Result<Vec<String
         }
     }
     Ok(deps.into_iter().collect())
+}
+
+/// Clear the install marker we wrote during the most recent install of this
+/// addon. Used by the uninstall path so a future re-install starts fresh
+/// instead of inheriting the previous marker.
+pub fn clear_install_marker(state: &AppState, catalog_id: &str) {
+    let conn = state.db.lock().unwrap();
+    let key = format!("installed:{}", catalog_id);
+    let _ = db::set_metadata(&conn, &key, "");
 }
 
 pub fn uninstall(addons_dir: &Path, dir_name: &str) -> Result<PathBuf> {
