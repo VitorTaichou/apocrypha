@@ -27,6 +27,7 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
+  const [uninstallingDirs, setUninstallingDirs] = useState<Set<string>>(new Set());
   const [installedDirs, setInstalledDirs] = useState<Set<string>>(new Set());
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
 
@@ -125,9 +126,27 @@ export function SearchPage() {
         }),
       );
       unlisteners.push(
-        await listen("addon:uninstall:done", () => {
+        await listen<{ dir_name: string }>("addon:uninstall:done", (e) => {
+          setUninstallingDirs((prev) => {
+            const next = new Set(prev);
+            next.delete(e.payload.dir_name);
+            return next;
+          });
           refreshInstalledSet();
         }),
+      );
+      unlisteners.push(
+        await listen<{ dir_name: string; error: string }>(
+          "addon:uninstall:error",
+          (e) => {
+            setUninstallingDirs((prev) => {
+              const next = new Set(prev);
+              next.delete(e.payload.dir_name);
+              return next;
+            });
+            console.error("uninstall failed:", e.payload.error);
+          },
+        ),
       );
     })();
     return () => unlisteners.forEach((fn) => fn());
@@ -145,6 +164,29 @@ export function SearchPage() {
     (addon: Addon): string | null =>
       addon.directories.find((d) => installedDirs.has(d)) ?? null,
     [installedDirs],
+  );
+
+  const handleUninstall = useCallback(
+    async (addon: Addon) => {
+      const dir = addon.directories.find((d) => installedDirs.has(d));
+      if (!dir) return;
+      setUninstallingDirs((prev) => {
+        const next = new Set(prev);
+        next.add(dir);
+        return next;
+      });
+      try {
+        await api.uninstallAddon(dir);
+      } catch (e) {
+        console.error("uninstall error:", e);
+      }
+    },
+    [installedDirs],
+  );
+
+  const isAddonUninstalling = useCallback(
+    (addon: Addon) => addon.directories.some((d) => uninstallingDirs.has(d)),
+    [uninstallingDirs],
   );
 
   const empty = !loading && addons.length === 0 && total === 0;
@@ -250,8 +292,10 @@ export function SearchPage() {
                     addon={a}
                     installing={installingIds.has(a.id)}
                     installed={isAddonInstalled(a)}
+                    uninstalling={isAddonUninstalling(a)}
                     selected={selectedAddon?.id === a.id}
                     onInstall={() => handleInstall(a)}
+                    onUninstall={() => handleUninstall(a)}
                     onSelect={() => setSelectedAddon(a)}
                   />
                 ))}

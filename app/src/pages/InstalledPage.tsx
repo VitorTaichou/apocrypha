@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { ArrowUpCircle, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import {
+  ArrowUpCircle,
+  Loader2,
+  RefreshCw,
+  AlertTriangle,
+  Search as SearchIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InstalledRow } from "@/components/InstalledRow";
 import { AddonDetailPanel } from "@/components/AddonDetailPanel";
@@ -14,6 +20,7 @@ export function InstalledPage() {
   const [uninstalling, setUninstalling] = useState<Set<string>>(new Set());
   const [updatingCatalogIds, setUpdatingCatalogIds] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [query, setQuery] = useState("");
 
   const [selectedCatalogAddon, setSelectedCatalogAddon] = useState<Addon | null>(null);
   const [selectedInstalled, setSelectedInstalled] = useState<InstalledAddon | null>(null);
@@ -141,6 +148,18 @@ export function InstalledPage() {
     [addons],
   );
 
+  const filteredAddons = useMemo(() => {
+    if (!addons) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return addons;
+    return addons.filter((a) => {
+      const title = a.title.toLowerCase();
+      const dir = a.dir_name.toLowerCase();
+      const author = (a.author ?? "").toLowerCase();
+      return title.includes(q) || dir.includes(q) || author.includes(q);
+    });
+  }, [addons, query]);
+
   const handleUpdateAll = useCallback(async () => {
     if (!addons) return;
     const toUpdate = addons.filter((a) => a.update_available && a.catalog_id);
@@ -234,7 +253,22 @@ export function InstalledPage() {
           }
         />
 
-        <div className="flex-1 overflow-y-auto px-10 py-8">
+        {addons && addons.length > 0 ? (
+          <div className="px-10 pt-6">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-outline)]" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter installed addons..."
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-lowest)] py-2.5 pl-11 pr-4 text-sm text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex-1 overflow-y-auto px-10 py-6">
           {loading && !addons ? (
             <EmptyState
               icon={<Loader2 className="h-6 w-6 animate-spin text-[var(--color-primary)]" />}
@@ -251,9 +285,14 @@ export function InstalledPage() {
               title="No addons indexed yet."
               subtitle="ESO either isn't installed or your AddOns folder is empty. Check Settings → AddOns Folder."
             />
+          ) : filteredAddons && filteredAddons.length === 0 ? (
+            <EmptyState
+              title="No matches."
+              subtitle={`Nothing in your library matches "${query}". Clear the filter to see all ${addons?.length ?? 0} addons.`}
+            />
           ) : (
             <div className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-lowest)]">
-              {addons?.map((a) => (
+              {filteredAddons?.map((a) => (
                 <InstalledRow
                   key={a.dir_name}
                   addon={a}

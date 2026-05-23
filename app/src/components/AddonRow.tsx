@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Check, Download, DownloadCloud, Heart, Loader2 } from "lucide-react";
+import {
+  Check,
+  Download,
+  DownloadCloud,
+  Heart,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import type { Addon } from "@/lib/types";
 import { formatCount } from "@/lib/format";
 import { CategoryIcon } from "@/components/CategoryIcon";
@@ -8,8 +15,10 @@ interface AddonRowProps {
   addon: Addon;
   installing?: boolean;
   installed?: boolean;
+  uninstalling?: boolean;
   selected?: boolean;
   onInstall?: () => void;
+  onUninstall?: () => void;
   onSelect?: () => void;
 }
 
@@ -50,19 +59,23 @@ const ACTION_BASE =
 function ActionButton({
   installing,
   installed,
+  uninstalling,
   onInstall,
+  onUninstall,
 }: {
   installing: boolean;
   installed: boolean;
+  uninstalling: boolean;
   onInstall?: () => void;
+  onUninstall?: () => void;
 }) {
-  if (installed) {
+  if (uninstalling) {
     return (
       <span
-        className={`${ACTION_BASE} border-[var(--color-primary-container)]/30 bg-[var(--color-primary-container)]/15 text-[var(--color-primary)]`}
+        className={`${ACTION_BASE} border-[var(--color-border)] bg-[var(--color-surface-low)] text-[var(--color-error)]`}
       >
-        <Check className="h-3.5 w-3.5" strokeWidth={2} />
-        Installed
+        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+        Removing
       </span>
     );
   }
@@ -75,6 +88,30 @@ function ActionButton({
         <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
         Installing
       </span>
+    );
+  }
+
+  if (installed) {
+    // Default: looks like a confirmation badge (Installed). On hover: swaps to
+    // a destructive "Uninstall" affordance — same pattern as Twitter's
+    // Following → Unfollow.
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onUninstall?.();
+        }}
+        className={`${ACTION_BASE} group/installed border-[var(--color-primary-container)]/30 bg-[var(--color-primary-container)]/15 text-[var(--color-primary)] transition-colors hover:border-[var(--color-error)]/40 hover:bg-[var(--color-error-container)]/15 hover:text-[var(--color-error)]`}
+      >
+        <span className="inline-flex items-center gap-1.5 group-hover/installed:hidden">
+          <Check className="h-3.5 w-3.5" strokeWidth={2} />
+          Installed
+        </span>
+        <span className="hidden items-center gap-1.5 group-hover/installed:inline-flex">
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          Uninstall
+        </span>
+      </button>
     );
   }
 
@@ -96,8 +133,10 @@ export function AddonRow({
   addon,
   installing = false,
   installed = false,
+  uninstalling = false,
   selected = false,
   onInstall,
+  onUninstall,
   onSelect,
 }: AddonRowProps) {
   return (
@@ -147,7 +186,13 @@ export function AddonRow({
         </span>
       </div>
 
-      <ActionButton installing={installing} installed={installed} onInstall={onInstall} />
+      <ActionButton
+        installing={installing}
+        installed={installed}
+        uninstalling={uninstalling}
+        onInstall={onInstall}
+        onUninstall={onUninstall}
+      />
     </article>
   );
 }
