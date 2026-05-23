@@ -82,6 +82,14 @@ export const api = {
   deleteSnapshot(id: string): Promise<void> {
     return invoke<void>("delete_savedvars_snapshot", { id });
   },
+
+  getCloseToTray(): Promise<boolean> {
+    return invoke<boolean>("get_close_to_tray");
+  },
+
+  setCloseToTray(value: boolean): Promise<void> {
+    return invoke<void>("set_close_to_tray", { value });
+  },
 };
 
 export type {

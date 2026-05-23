@@ -186,6 +186,16 @@ pub async fn install_addon(
 }
 
 #[tauri::command]
+pub fn get_close_to_tray(state: State<'_, AppState>) -> CmdResult<bool> {
+    Ok(state.close_to_tray_enabled())
+}
+
+#[tauri::command]
+pub fn set_close_to_tray(state: State<'_, AppState>, value: bool) -> CmdResult<()> {
+    state.set_close_to_tray(value).map_err(map_err)
+}
+
+#[tauri::command]
 pub fn list_savedvars_snapshots(state: State<'_, AppState>) -> CmdResult<Vec<Snapshot>> {
     savedvars::list(&state.backups_dir).map_err(map_err)
 }

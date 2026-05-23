@@ -4,6 +4,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { SnapshotsManager } from "@/components/SnapshotsManager";
 import { UpdaterPanel } from "@/components/UpdaterPanel";
+import { WindowBehaviorPanel } from "@/components/WindowBehaviorPanel";
 import { api } from "@/lib/api";
 import type { CatalogMeta } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/format";
@@ -163,6 +164,13 @@ export function SettingsPage() {
             </span>
             <span className="text-sm text-[var(--color-outline)]">Coming soon</span>
           </label>
+        </SettingSection>
+
+        <SettingSection
+          title="Window behavior"
+          description="How Apocrypha starts and what happens when you close the window."
+        >
+          <WindowBehaviorPanel />
         </SettingSection>
 
         <SettingSection

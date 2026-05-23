@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
+const CLOSE_TO_TRAY_KEY: &str = "close_to_tray";
+
 use crate::api::MmouiClient;
 use crate::db;
 use crate::models::CatalogMeta;
@@ -16,6 +18,7 @@ pub struct AppState {
     pub backups_dir: PathBuf,
     pub mmoui: MmouiClient,
     pub syncing: AtomicBool,
+    pub close_to_tray: AtomicBool,
 }
 
 const ADDONS_DIR_KEY: &str = "addons_dir_override";
@@ -36,6 +39,9 @@ impl AppState {
             .unwrap_or_else(|| data_dir.join("addons_placeholder"));
         let backups_dir = data_dir.join("backups");
         std::fs::create_dir_all(&backups_dir)?;
+        let close_to_tray = db::get_metadata(&conn, CLOSE_TO_TRAY_KEY)
+            .map(|v| v == "true")
+            .unwrap_or(false);
         Ok(Self {
             data_dir,
             db: Mutex::new(conn),
@@ -43,12 +49,23 @@ impl AppState {
             backups_dir,
             mmoui: MmouiClient::new(),
             syncing: AtomicBool::new(false),
+            close_to_tray: AtomicBool::new(close_to_tray),
         })
     }
 
     pub fn persist_addons_dir(&self, path: &str) -> Result<()> {
         let conn = self.db.lock().unwrap();
         db::set_metadata(&conn, ADDONS_DIR_KEY, path)
+    }
+
+    pub fn set_close_to_tray(&self, value: bool) -> Result<()> {
+        self.close_to_tray.store(value, Ordering::SeqCst);
+        let conn = self.db.lock().unwrap();
+        db::set_metadata(&conn, CLOSE_TO_TRAY_KEY, if value { "true" } else { "false" })
+    }
+
+    pub fn close_to_tray_enabled(&self) -> bool {
+        self.close_to_tray.load(Ordering::SeqCst)
     }
 
     pub fn is_stale(&self, max_age_hours: i64) -> bool {
