@@ -1,0 +1,11 @@
+# Signing keys for the Tauri Updater — NEVER commit these.
+# The .pub file is fine (public key), but to keep it simple we just ignore
+# everything under secrets/. Generate via: npx @tauri-apps/cli signer generate
+app/secrets/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
