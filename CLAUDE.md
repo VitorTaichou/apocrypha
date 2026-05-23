@@ -94,6 +94,40 @@ User wants:
 - Commit messages in **English**, natural tone (no Conventional Commits ceremony unless asked)
 - **No Co-Authored-By trailer** for Claude
 
+## Branching & releases
+
+- **`main`** — release branch. Tagged commits cut from here become public releases.
+- **`dev`** — active development. Day-to-day commits go here.
+- Feature branches off `dev` when something needs isolation. Otherwise just push to `dev`.
+- `.github/workflows/build.yml` — runs on every push to `dev` and on PRs to `main`. Sanity-builds MSI/AppImage and uploads them as workflow artifacts (for testing, not as a release).
+- `.github/workflows/release.yml` — fires on a `v*` tag push (or via workflow_dispatch). Uses `tauri-apps/tauri-action` to build, sign with the keypair stored in repo secrets, and create a **draft** GitHub Release with the MSI, NSIS, AppImage, `latest.json`, and signature files attached. Edit the draft on GitHub and publish when ready.
+
+### Release flow
+
+```powershell
+# Develop on dev
+git checkout dev
+# ...commit work...
+
+# When ready to ship:
+git checkout main
+git merge dev --no-ff -m "Merge dev for vX.Y.Z"
+
+# Bump version in three places (must match):
+#   app/package.json
+#   app/src-tauri/Cargo.toml
+#   app/src-tauri/tauri.conf.json
+
+git commit -am "Bump version to X.Y.Z"
+git push origin main
+
+git tag vX.Y.Z
+git push origin vX.Y.Z   # triggers release.yml
+```
+
+After the workflow finishes, a draft release with all assets is waiting on
+GitHub. Open it, polish the notes, hit Publish.
+
 ## Distribution & release (not wired yet)
 
 These pieces have been left as TODO because they need external credentials
