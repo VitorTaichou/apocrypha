@@ -14,7 +14,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Addon, AddonDetails } from "@/lib/types";
 import { api } from "@/lib/api";
 import { formatCount, formatRelativeTime } from "@/lib/format";
-import { stripBBCode, toParagraphs } from "@/lib/bbcode";
+import { BBCodeContent } from "@/components/BBCodeContent";
 import { getCategoryMeta } from "@/lib/categoryMeta";
 import { Lightbox } from "@/components/Lightbox";
 
@@ -279,20 +279,6 @@ function Section({
   );
 }
 
-function ProseBlock({ text }: { text: string }) {
-  const paragraphs = toParagraphs(text);
-  if (paragraphs.length === 0) return null;
-  return (
-    <div className="space-y-2.5 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
-      {paragraphs.map((p, i) => (
-        <p key={i} className="whitespace-pre-wrap">
-          {p}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 function ScreenshotStrip({
   images,
   onOpen,
@@ -378,8 +364,8 @@ export function AddonDetailPanel({
   const meta = addon.category_id ? getCategoryMeta(addon.category_id) : null;
   const CategoryIconComp = meta?.icon;
 
-  const description = stripBBCode(details?.description ?? "");
-  const changelog = stripBBCode(details?.changelog ?? "");
+  const description = details?.description ?? "";
+  const changelog = details?.changelog ?? "";
   const galleryImages = addon.images;
 
   return (
@@ -476,7 +462,7 @@ export function AddonDetailPanel({
             ) : detailsError ? (
               <p className="text-sm text-[var(--color-error)]">{detailsError}</p>
             ) : description ? (
-              <ProseBlock text={description} />
+              <BBCodeContent text={description} />
             ) : (
               <p className="text-sm italic text-[var(--color-outline)]">
                 No description provided.
@@ -486,7 +472,7 @@ export function AddonDetailPanel({
 
           {detailsLoading || changelog ? (
             <Section title="Changelog">
-              {detailsLoading ? <Skeleton lines={3} /> : <ProseBlock text={changelog} />}
+              {detailsLoading ? <Skeleton lines={3} /> : <BBCodeContent text={changelog} />}
             </Section>
           ) : null}
 
