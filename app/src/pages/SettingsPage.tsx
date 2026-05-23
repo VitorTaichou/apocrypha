@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { ExternalLink, FolderOpen, Loader2 } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { PageHeader } from "@/components/PageHeader";
 import { SnapshotsManager } from "@/components/SnapshotsManager";
 import { UpdaterPanel } from "@/components/UpdaterPanel";
@@ -149,7 +150,7 @@ export function SettingsPage() {
 
         <SettingSection
           title="SavedVariables Backups"
-          description="Snapshots of your live/SavedVariables folder. A snapshot is taken automatically before each addon update; you can also create one manually any time."
+          description="Snapshots of your live/SavedVariables folder. Create one whenever you want a safety net — restore in one click if an update wipes your config."
         >
           <SnapshotsManager />
         </SettingSection>
@@ -184,11 +185,20 @@ export function SettingsPage() {
           title="About"
           description="Version, links, and credits."
         >
-          <div className="space-y-1.5 text-base text-[var(--color-on-surface-variant)]">
-            <p>Apocrypha v0.1.0 — codename Archivist</p>
+          <div className="space-y-3 text-base text-[var(--color-on-surface-variant)]">
+            <p>Apocrypha v0.1.0</p>
             <p className="text-sm text-[var(--color-outline)]">
               Built with Tauri 2, Rust, React, and Tailwind.
             </p>
+            <button
+              onClick={() =>
+                openUrl("https://github.com/VitorTaichou/apocrypha").catch(() => {})
+              }
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-low)] px-3.5 py-1.5 text-xs font-medium text-[var(--color-on-surface-variant)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
+              View on GitHub
+            </button>
           </div>
         </SettingSection>
       </div>

@@ -6,7 +6,6 @@ use std::path::{Component, Path, PathBuf};
 use tauri::{AppHandle, Emitter};
 
 use crate::db;
-use crate::savedvars;
 use crate::state::AppState;
 
 #[derive(Serialize, Clone)]
@@ -35,39 +34,6 @@ async fn install_one(
 ) -> Result<()> {
     if !visited.insert(addon_id.clone()) {
         return Ok(());
-    }
-
-    // Look up the addon's known directories from the catalog. If any are
-    // already present, treat this as a reinstall/update and snapshot the
-    // user's SavedVariables before touching anything. Best-effort: a snapshot
-    // failure must not block the install pipeline.
-    let known_dirs = {
-        let conn = state.db.lock().unwrap();
-        db::find_by_id(&conn, &addon_id)?
-            .map(|a| a.directories)
-            .unwrap_or_default()
-    };
-    {
-        let addons_dir = state.addons_dir.lock().unwrap().clone();
-        let is_reinstall = known_dirs.iter().any(|d| addons_dir.join(d).exists());
-        if is_reinstall {
-            if let Some(sv_dir) = savedvars::savedvars_dir_for(&addons_dir) {
-                if sv_dir.exists() {
-                    let trigger = known_dirs
-                        .first()
-                        .cloned()
-                        .unwrap_or_else(|| addon_id.clone());
-                    if let Err(e) = savedvars::create(
-                        &state.backups_dir,
-                        &sv_dir,
-                        "auto",
-                        Some(&trigger),
-                    ) {
-                        eprintln!("auto-snapshot skipped for {}: {}", trigger, e);
-                    }
-                }
-            }
-        }
     }
 
     let _ = app.emit(

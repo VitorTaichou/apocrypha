@@ -151,7 +151,7 @@ export function SnapshotsManager() {
         </div>
       ) : snapshots && snapshots.length === 0 ? (
         <div className="rounded-md border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-sm text-[var(--color-outline)]">
-          No snapshots yet — create one before updating an addon you can't
+          No snapshots yet — create one before touching an addon you can't
           afford to lose configs for.
         </div>
       ) : (

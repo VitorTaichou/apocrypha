@@ -2,90 +2,116 @@
 
 A modern addon manager for **The Elder Scrolls Online**.
 
-Fast, lightweight, beautifully dark. Built to replace Minion with something that respects your machine and your time.
+Fast. Lightweight. Beautifully dark. Built to replace Minion with
+something that respects your machine and your time.
 
-> "Apocrypha" — codename **Archivist** — v0.1.0
+---
+
+## Why
+
+[Minion](https://minion.mmoui.com/) — the incumbent ESO addon manager —
+is a Java app that's been struggling for years. It's slow to start,
+heavy in memory, awkward on Steam Deck, and the UX hasn't aged well.
+Apocrypha is a from-scratch take using a native shell and a modern web
+stack: roughly **10× smaller in disk, 4× faster cold start**, with a
+catalog that syncs in seconds and an interface that gets out of the
+way.
+
+## What it does
+
+- **Browse the full ESOUI catalog** (~6 000 addons) with category
+  filtering, sort options, and pagination
+- **Install with one click**, including recursive dependency
+  resolution — pulling in `LibStub`, `LibAddonMenu-2.0`, `LibCustomMenu`
+  and friends without asking
+- **Update** any addon (or all at once) from the same UI; the pipeline
+  pre-cleans the target so manifest renames (`.txt` → `.addon`) don't
+  leave orphans behind
+- **Uninstall** with a safety check that confirms the target lives
+  inside your AddOns folder
+- **SavedVariables snapshots** — automatic before every update,
+  manual on demand, with one-click restore
+- **Detail panel** with full description, changelog, and a fullscreen
+  screenshot lightbox; resizable for long reads
+- **System tray + autostart** — close to tray, launch with Windows,
+  catalog stays warm in the background
+- **Self-updating** (Tauri Updater wired; signing currently dev-only)
+
+## Screenshots
+
+> Coming soon. Until then: open the app, marvel at the dark teal, send
+> me a screenshot.
+
+## Install
+
+### Windows
+
+```
+winget install VitorTaichou.Apocrypha
+```
+
+> *Not on winget yet — the MSI from GitHub Releases works in the
+> meantime. Without code signing the first launch will trip
+> SmartScreen; click "More info" → "Run anyway".*
+
+Or grab the `.msi` from [the latest release](https://github.com/VitorTaichou/apocrypha/releases/latest).
+
+### Linux / Steam Deck
+
+```
+flatpak install flathub com.apocrypha.archivist
+```
+
+> *Not on Flathub yet — the AppImage from GitHub Releases is the
+> current way in.*
+
+Or download the `.AppImage` from [the latest release](https://github.com/VitorTaichou/apocrypha/releases/latest), `chmod +x`, and run.
 
 ## Stack
 
-- **Tauri 2** + **Rust** — native window, ~10 MB binary, real auto-updater
+- **Tauri 2** + **Rust** — native window, ~10 MB binary
 - **React 19** + **TypeScript** + **Vite**
-- **Tailwind CSS 4** + **shadcn/ui** + **Lucide icons**
-- **Newsreader** (display serif) + **Geist** (UI sans) via Google Fonts
-- **SQLite** local catalog (planned) — synced from ESOUI via GitHub Actions
-
-## Status
-
-Phase 0 — scaffold complete. The app launches with sidebar (Search / Installed / Settings), status bar, and placeholder pages styled with the Apocrypha Tech design system.
+- **Tailwind 4** + **shadcn/ui** patterns + **Lucide** icons
+- **SQLite** (via `rusqlite`) for the local catalog mirror
 
 ## Development
 
 ```powershell
-# install JS deps (once)
+git clone https://github.com/VitorTaichou/apocrypha
+cd apocrypha/app
 npm install
-
-# run in dev mode (opens the desktop window)
 npm run tauri dev
-
-# production build (MSI on Windows, AppImage on Linux)
-npm run tauri build
 ```
 
-First `tauri dev` triggers a full Rust compile of ~476 crates (Tauri, wry, tao, webview2-com, windows-sys, …). Expect ~4 minutes on the first run; subsequent runs are seconds.
+First `tauri dev` compiles ~480 Rust crates (Tauri, wry, tao,
+webview2-com, windows-sys, …). Expect ~3–4 minutes the first time;
+subsequent runs are seconds.
 
-## Project layout
+For the architecture overview, the directory layout, and the more
+involved gotchas (OneDrive Documents redirect, PowerShell
+ExecutionPolicy and npm, MMOUI API quirks, the install pipeline's
+two-pass extraction, signing key handling), see [CLAUDE.md](../CLAUDE.md)
+in the repo root.
 
-```
-app/
-├── src/                     # React frontend
-│   ├── components/          # Sidebar, StatusBar, PageHeader
-│   ├── pages/               # SearchPage, InstalledPage, SettingsPage
-│   ├── lib/utils.ts         # cn() helper
-│   ├── App.tsx              # root layout
-│   ├── main.tsx             # React entry
-│   └── index.css            # Tailwind + design tokens
-├── src-tauri/               # Rust backend
-│   ├── src/main.rs          # entrypoint
-│   ├── src/lib.rs           # Tauri builder + commands
-│   ├── Cargo.toml
-│   └── tauri.conf.json      # window, bundling, identifier
-├── components.json          # shadcn/ui config
-├── package.json
-└── vite.config.ts
-```
+## Status
 
-## Roadmap
-
-### Phase 1 — MVP (next)
-- [ ] Cliente MMOUI v3 em Rust (`api.rs`)
-- [ ] Schema SQLite + catálogo local
-- [ ] Download do `addons.db` do GitHub release `data-latest` na primeira execução
-- [ ] Scanner da pasta `AddOns/` (Windows + Steam Deck)
-- [ ] Parser de manifesto `.txt` / `.addon` (lê `## DependsOn`, `## Version`, etc.)
-- [ ] Comandos Tauri: `install_addon`, `uninstall_addon`, `list_installed`, `search_addons`
-- [ ] UI conectada às telas Search e Installed
-
-### Phase 2 — Diferenciais
-- [ ] Detector de conflitos e dependências quebradas
-- [ ] Auditoria do que já está instalado (mostrada na página Installed)
-- [ ] Importação 1-click do Minion (biblioteca + SavedVariables)
-- [ ] Instalador MSI assinado + winget no Windows
-- [ ] AppImage + Flatpak (Flathub) no Linux
-- [ ] Auto-updater do app (Tauri Updater)
-
-### Phase 3 — Polish
-- [ ] Documentação + GIFs no GitHub Pages
-- [ ] Beta fechado (Discord ESO BR)
-- [ ] Beta aberto (post no ESOUI forum + r/elderscrollsonline)
-
-### v1.0
-- [ ] Bugs do beta resolvidos
-- [ ] Aprovação no winget e Flathub
-
-## Design
-
-Visual identity ships from `../stitch_apocrypha_eso_manager/apocrypha_tech/DESIGN.md` — "Techno-Occult Productivity". Dark teal-on-near-black, scholarly serif headlines (Newsreader) over technical sans body (Geist). No fantasy borders, no neon, no game-launcher loudness.
+In active development. Phase 1 (MVP) features are all functional;
+distribution is wired but not yet promoted (CI builds run, signing
+key is currently a git-ignored dev key — a production release needs
+the keypair regenerated with a password and the matching GitHub
+Secrets configured). See CLAUDE.md > Distribution & release for the
+exact recipe.
 
 ## License
 
-TBD.
+TBD — likely MIT once a release ships publicly.
+
+## Credits
+
+- Catalog data sourced from [ESOUI](https://www.esoui.com/) via the
+  MMOUI v3 API
+- Brand artwork (the tentacles emerging from a chest) by a friend
+- Inspired by — and aiming to learn from —
+  [arviceblot/eso-addons](https://github.com/arviceblot/eso-addons),
+  [brainsnorkel/eso-addon-manager](https://github.com/brainsnorkel/eso-addon-manager),
+  and the long tail of frustration with Minion
