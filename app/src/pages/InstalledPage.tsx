@@ -254,21 +254,21 @@ export function InstalledPage() {
         />
 
         {addons && addons.length > 0 ? (
-          <div className="px-10 pt-6">
+          <div className="px-10 pt-8">
             <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-outline)]" />
+              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--color-outline)]" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Filter installed addons..."
-                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-lowest)] py-2.5 pl-11 pr-4 text-sm text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-lowest)] py-3.5 pl-12 pr-4 text-base text-[var(--color-on-surface)] placeholder:text-[var(--color-outline)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
               />
             </div>
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto px-10 py-6">
+        <div className="flex-1 overflow-y-auto px-10 py-8">
           {loading && !addons ? (
             <EmptyState
               icon={<Loader2 className="h-6 w-6 animate-spin text-[var(--color-primary)]" />}
