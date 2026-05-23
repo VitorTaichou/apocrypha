@@ -254,7 +254,7 @@ export function InstalledPage() {
         />
 
         {addons && addons.length > 0 ? (
-          <div className="px-10 pt-8">
+          <div className="px-10 pb-6 pt-8">
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--color-outline)]" />
               <input
@@ -268,7 +268,7 @@ export function InstalledPage() {
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto px-10 py-8">
+        <div className="flex-1 overflow-y-auto px-10 pb-8">
           {loading && !addons ? (
             <EmptyState
               icon={<Loader2 className="h-6 w-6 animate-spin text-[var(--color-primary)]" />}
