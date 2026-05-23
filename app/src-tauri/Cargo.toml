@@ -1,6 +1,6 @@
 [package]
 name = "apocrypha"
-version = "0.1.0"
+version = "0.1.1"
 description = "Modern addon manager for The Elder Scrolls Online"
 authors = ["Vitor Danrley"]
 edition = "2021"
