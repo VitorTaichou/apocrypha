@@ -64,6 +64,44 @@ jobs:
         working-directory: app
         run: npm ci
 
+      - name: Compute release notes
+        id: notes
+        shell: bash
+        run: |
+          git fetch --tags --force --quiet
+          CURRENT="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          PREV=$(git tag --sort=-creatordate | grep -v "^${CURRENT}$" | head -1)
+          if [ -n "$PREV" ]; then
+            CHANGES=$(git log "${PREV}..${CURRENT}" --pretty=format:"- %s" --no-merges)
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV}...${CURRENT}"
+          else
+            CHANGES=$(git log "${CURRENT}" --pretty=format:"- %s" --no-merges -10)
+            COMPARE_URL="https://github.com/${{ github.repository }}/commits/${CURRENT}"
+          fi
+          {
+            echo 'BODY<<EOF_BODY'
+            echo "Apocrypha ${CURRENT} — modern addon manager for The Elder Scrolls Online."
+            echo ""
+            echo "Highlights"
+            echo ""
+            echo "${CHANGES}"
+            echo ""
+            echo "Downloads"
+            echo ""
+            echo "- Windows: the .msi installer attached below"
+            echo "- Linux / Steam Deck: the .AppImage (chmod +x and run)"
+            echo "- Also available: .deb, .rpm, NSIS .exe — all signed for the in-app updater"
+            echo ""
+            echo "Heads-up for Windows"
+            echo ""
+            echo "The build is not code-signed yet, so first launch shows the SmartScreen"
+            echo 'dialog ("Windows protected your PC"). Click More info > Run anyway once;'
+            echo "Windows trusts it from then on."
+            echo ""
+            echo "Full changelog: ${COMPARE_URL}"
+            echo 'EOF_BODY'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build & publish
         uses: tauri-apps/tauri-action@v0
         env:
@@ -74,19 +112,7 @@ jobs:
           projectPath: app
           tagName: ${{ github.ref_name || github.event.inputs.tag }}
           releaseName: "Apocrypha ${{ github.ref_name || github.event.inputs.tag }}"
-          releaseBody: |
-            See the changelog at https://github.com/VitorTaichou/apocrypha/compare/${{ github.event.before }}...${{ github.ref_name || github.event.inputs.tag }}
-
-            ## Downloads
-
-            - **Windows:** the `.msi` installer attached below
-            - **Linux / Steam Deck:** the `.AppImage`, `chmod +x` and run
-
-            ## Heads-up
-
-            Windows build is not code-signed yet — first launch will trigger
-            SmartScreen's "Windows protected your PC" dialog. Click **More info**
-            → **Run anyway** the first time; after that Windows trusts it.
+          releaseBody: ${{ steps.notes.outputs.BODY }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
