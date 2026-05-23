@@ -90,6 +90,14 @@ export const api = {
   setCloseToTray(value: boolean): Promise<void> {
     return invoke<void>("set_close_to_tray", { value });
   },
+
+  getAutoUpdateInterval(): Promise<number> {
+    return invoke<number>("get_auto_update_interval");
+  },
+
+  setAutoUpdateInterval(minutes: number): Promise<void> {
+    return invoke<void>("set_auto_update_interval", { minutes });
+  },
 };
 
 export type {

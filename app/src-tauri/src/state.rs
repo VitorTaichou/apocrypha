@@ -1,10 +1,11 @@
 use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 
 const CLOSE_TO_TRAY_KEY: &str = "close_to_tray";
+const AUTO_UPDATE_INTERVAL_KEY: &str = "auto_update_interval_minutes";
 
 use crate::api::MmouiClient;
 use crate::db;
@@ -19,6 +20,7 @@ pub struct AppState {
     pub mmoui: MmouiClient,
     pub syncing: AtomicBool,
     pub close_to_tray: AtomicBool,
+    pub auto_update_interval_minutes: AtomicU64,
 }
 
 const ADDONS_DIR_KEY: &str = "addons_dir_override";
@@ -42,6 +44,9 @@ impl AppState {
         let close_to_tray = db::get_metadata(&conn, CLOSE_TO_TRAY_KEY)
             .map(|v| v == "true")
             .unwrap_or(false);
+        let auto_update_interval = db::get_metadata(&conn, AUTO_UPDATE_INTERVAL_KEY)
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0);
         Ok(Self {
             data_dir,
             db: Mutex::new(conn),
@@ -50,6 +55,7 @@ impl AppState {
             mmoui: MmouiClient::new(),
             syncing: AtomicBool::new(false),
             close_to_tray: AtomicBool::new(close_to_tray),
+            auto_update_interval_minutes: AtomicU64::new(auto_update_interval),
         })
     }
 
@@ -66,6 +72,17 @@ impl AppState {
 
     pub fn close_to_tray_enabled(&self) -> bool {
         self.close_to_tray.load(Ordering::SeqCst)
+    }
+
+    pub fn set_auto_update_interval(&self, minutes: u64) -> Result<()> {
+        self.auto_update_interval_minutes
+            .store(minutes, Ordering::SeqCst);
+        let conn = self.db.lock().unwrap();
+        db::set_metadata(&conn, AUTO_UPDATE_INTERVAL_KEY, &minutes.to_string())
+    }
+
+    pub fn auto_update_interval(&self) -> u64 {
+        self.auto_update_interval_minutes.load(Ordering::SeqCst)
     }
 
     pub fn is_stale(&self, max_age_hours: i64) -> bool {

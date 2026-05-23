@@ -31,3 +31,4 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 regex = "1"
 once_cell = "1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }

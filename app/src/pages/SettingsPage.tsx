@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, FolderOpen, Loader2 } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { AutoUpdatePanel } from "@/components/AutoUpdatePanel";
 import { PageHeader } from "@/components/PageHeader";
 import { SnapshotsManager } from "@/components/SnapshotsManager";
 import { UpdaterPanel } from "@/components/UpdaterPanel";
@@ -157,14 +158,9 @@ export function SettingsPage() {
 
         <SettingSection
           title="Auto-update"
-          description="Keep addons fresh without thinking about it."
+          description="Keep addons fresh without thinking about it. Apocrypha runs the same install pipeline as a manual Update click, just on a timer and only while ESO is closed."
         >
-          <label className="flex items-center justify-between gap-4">
-            <span className="text-base text-[var(--color-on-surface)]">
-              Update silently when the game is closed
-            </span>
-            <span className="text-sm text-[var(--color-outline)]">Coming soon</span>
-          </label>
+          <AutoUpdatePanel />
         </SettingSection>
 
         <SettingSection

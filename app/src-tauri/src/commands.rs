@@ -8,6 +8,55 @@ use crate::savedvars;
 use crate::scanner;
 use crate::state::AppState;
 
+/// Scan the AddOns folder and cross-reference catalog data. Public so the
+/// background auto-update task can reuse the same logic as the Tauri command.
+pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddon>> {
+    let dir = state.addons_dir.lock().unwrap().clone();
+    let mut installed = scanner::scan(&dir)?;
+
+    struct CatalogMatch {
+        id: String,
+        version: String,
+        category_id: Option<String>,
+        thumbnail_url: Option<String>,
+    }
+    let mut catalog_map: HashMap<String, CatalogMatch> = HashMap::new();
+    {
+        let conn = state.db.lock().unwrap();
+        for a in installed.iter() {
+            if catalog_map.contains_key(&a.dir_name) {
+                continue;
+            }
+            if let Ok(Some(addon)) = db::find_by_directory(&conn, &a.dir_name) {
+                catalog_map.insert(
+                    a.dir_name.clone(),
+                    CatalogMatch {
+                        id: addon.id,
+                        version: addon.version,
+                        category_id: addon.category_id,
+                        thumbnail_url: addon.thumbnail_url,
+                    },
+                );
+            }
+        }
+    }
+
+    for a in installed.iter_mut() {
+        if let Some(m) = catalog_map.get(&a.dir_name) {
+            a.catalog_id = Some(m.id.clone());
+            a.catalog_version = Some(m.version.clone());
+            a.category_id = m.category_id.clone();
+            a.thumbnail_url = m.thumbnail_url.clone();
+            a.update_available = match a.version.as_deref() {
+                Some(local) => normalize_version(local) != normalize_version(&m.version),
+                None => false,
+            };
+        }
+    }
+
+    Ok(installed)
+}
+
 type CmdResult<T> = Result<T, String>;
 
 fn map_err<E: std::fmt::Display>(e: E) -> String {
@@ -90,50 +139,7 @@ pub fn catalog_meta(state: State<'_, AppState>) -> CmdResult<CatalogMeta> {
 
 #[tauri::command]
 pub fn list_installed(state: State<'_, AppState>) -> CmdResult<Vec<InstalledAddon>> {
-    let dir = state.addons_dir.lock().unwrap().clone();
-    let mut installed = scanner::scan(&dir).map_err(map_err)?;
-
-    // Enrich with catalog data — match by directory or name
-    let conn = state.db.lock().unwrap();
-    struct CatalogMatch {
-        id: String,
-        version: String,
-        category_id: Option<String>,
-        thumbnail_url: Option<String>,
-    }
-    let mut catalog_map: HashMap<String, CatalogMatch> = HashMap::new();
-    for a in installed.iter() {
-        if catalog_map.contains_key(&a.dir_name) {
-            continue;
-        }
-        if let Ok(Some(addon)) = db::find_by_directory(&conn, &a.dir_name) {
-            catalog_map.insert(
-                a.dir_name.clone(),
-                CatalogMatch {
-                    id: addon.id,
-                    version: addon.version,
-                    category_id: addon.category_id,
-                    thumbnail_url: addon.thumbnail_url,
-                },
-            );
-        }
-    }
-    drop(conn);
-
-    for a in installed.iter_mut() {
-        if let Some(m) = catalog_map.get(&a.dir_name) {
-            a.catalog_id = Some(m.id.clone());
-            a.catalog_version = Some(m.version.clone());
-            a.category_id = m.category_id.clone();
-            a.thumbnail_url = m.thumbnail_url.clone();
-            a.update_available = match a.version.as_deref() {
-                Some(local) => normalize_version(local) != normalize_version(&m.version),
-                None => false,
-            };
-        }
-    }
-
-    Ok(installed)
+    enumerate_installed(state.inner()).map_err(map_err)
 }
 
 #[tauri::command]
@@ -193,6 +199,16 @@ pub fn get_close_to_tray(state: State<'_, AppState>) -> CmdResult<bool> {
 #[tauri::command]
 pub fn set_close_to_tray(state: State<'_, AppState>, value: bool) -> CmdResult<()> {
     state.set_close_to_tray(value).map_err(map_err)
+}
+
+#[tauri::command]
+pub fn get_auto_update_interval(state: State<'_, AppState>) -> CmdResult<u64> {
+    Ok(state.auto_update_interval())
+}
+
+#[tauri::command]
+pub fn set_auto_update_interval(state: State<'_, AppState>, minutes: u64) -> CmdResult<()> {
+    state.set_auto_update_interval(minutes).map_err(map_err)
 }
 
 #[tauri::command]
