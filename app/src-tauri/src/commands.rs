@@ -17,10 +17,12 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
     struct CatalogMatch {
         id: String,
         version: String,
+        last_updated: i64,
         category_id: Option<String>,
         thumbnail_url: Option<String>,
     }
     let mut catalog_map: HashMap<String, CatalogMatch> = HashMap::new();
+    let mut install_markers: HashMap<String, i64> = HashMap::new();
     {
         let conn = state.db.lock().unwrap();
         for a in installed.iter() {
@@ -28,11 +30,19 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
                 continue;
             }
             if let Ok(Some(addon)) = db::find_by_directory(&conn, &a.dir_name) {
+                if let Some(marker) =
+                    db::get_metadata(&conn, &format!("installed:{}", addon.id))
+                {
+                    if let Ok(n) = marker.parse::<i64>() {
+                        install_markers.insert(addon.id.clone(), n);
+                    }
+                }
                 catalog_map.insert(
                     a.dir_name.clone(),
                     CatalogMatch {
                         id: addon.id,
                         version: addon.version,
+                        last_updated: addon.last_updated,
                         category_id: addon.category_id,
                         thumbnail_url: addon.thumbnail_url,
                     },
@@ -47,10 +57,21 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             a.catalog_version = Some(m.version.clone());
             a.category_id = m.category_id.clone();
             a.thumbnail_url = m.thumbnail_url.clone();
-            a.update_available = match a.version.as_deref() {
-                Some(local) => normalize_version(local) != normalize_version(&m.version),
+
+            // Two paths to "up to date":
+            //   1. The local manifest's `## Version:` matches the catalog.
+            //   2. We have a marker proving we installed this exact catalog
+            //      timestamp (covers authors who bump ESOUI without bumping
+            //      the manifest string — the loop would otherwise never end).
+            let version_matches = match a.version.as_deref() {
+                Some(local) => normalize_version(local) == normalize_version(&m.version),
                 None => false,
             };
+            let marker_matches = install_markers
+                .get(&m.id)
+                .map(|t| *t > 0 && *t == m.last_updated)
+                .unwrap_or(false);
+            a.update_available = !(version_matches || marker_matches);
         }
     }
 
@@ -246,9 +267,22 @@ pub fn uninstall_addon(
     state: State<'_, AppState>,
     dir_name: String,
 ) -> CmdResult<()> {
+    // Look up the catalog id before deleting, so we can clear its install
+    // marker too. Not finding one is fine — orphan addons just skip this step.
+    let catalog_id = {
+        let conn = state.db.lock().unwrap();
+        db::find_by_directory(&conn, &dir_name)
+            .ok()
+            .flatten()
+            .map(|a| a.id)
+    };
+
     let addons_dir = state.addons_dir.lock().unwrap().clone();
     match installer::uninstall(&addons_dir, &dir_name) {
         Ok(_) => {
+            if let Some(id) = catalog_id {
+                installer::clear_install_marker(state.inner(), &id);
+            }
             let _ = app.emit(
                 "addon:uninstall:done",
                 &serde_json::json!({ "dir_name": &dir_name }),
