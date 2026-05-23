@@ -76,7 +76,7 @@ function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--color-surface)] text-[var(--color-on-surface)]">
       <Sidebar current={page} onNavigate={setPage} />
-      <main className="flex flex-1 flex-col overflow-hidden bg-[var(--color-surface)]">
+      <main className="relative flex flex-1 flex-col overflow-hidden bg-[var(--color-surface)]">
         <SyncBanner status={syncStatus} />
         <div className="flex-1 overflow-hidden" key={catalogTick}>
           {page === "search" && <SearchPage />}

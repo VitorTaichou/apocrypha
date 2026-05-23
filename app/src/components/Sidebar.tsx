@@ -39,7 +39,7 @@ export function Sidebar({ current, onNavigate }: SidebarProps) {
         />
       </div>
 
-      <div className="relative z-10 flex justify-center px-7 pt-10 pb-10">
+      <div className="relative z-10 px-7 pt-10 pb-10 text-center">
         <h1 className="inline-flex items-center gap-3 font-serif text-3xl font-light leading-none tracking-tight text-[var(--color-primary)]">
           <TentacleMark
             title="Apocrypha"
@@ -47,6 +47,9 @@ export function Sidebar({ current, onNavigate }: SidebarProps) {
           />
           <span className="translate-y-[1px]">APOCRYPHA</span>
         </h1>
+        <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-on-surface-variant)]">
+          A modern ESO addon manager
+        </p>
       </div>
 
       <nav className="relative z-10 flex flex-1 flex-col gap-1.5 px-4">
