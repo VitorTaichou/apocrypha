@@ -101,7 +101,7 @@ function ActionButton({
           e.stopPropagation();
           onUninstall?.();
         }}
-        className={`${ACTION_BASE} group/installed border-[var(--color-primary-container)]/30 bg-[var(--color-primary-container)]/15 text-[var(--color-primary)] transition-colors hover:border-[var(--color-error)]/40 hover:bg-[var(--color-error-container)]/15 hover:text-[var(--color-error)]`}
+        className={`${ACTION_BASE} group/installed border-[var(--color-primary-container)]/30 bg-[var(--color-primary-container)]/15 text-[var(--color-primary)] transition-colors group-hover:border-[var(--color-primary-container)]/65 hover:!border-[var(--color-error)]/45 hover:bg-[var(--color-error-container)]/15 hover:text-[var(--color-error)]`}
       >
         <span className="inline-flex items-center gap-1.5 group-hover/installed:hidden">
           <Check className="h-3.5 w-3.5" strokeWidth={2} />
