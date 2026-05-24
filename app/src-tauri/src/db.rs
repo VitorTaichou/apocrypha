@@ -302,29 +302,6 @@ pub fn catalog_meta(conn: &Connection) -> Result<CatalogMeta> {
     })
 }
 
-pub fn is_stale(conn: &Connection, max_age_hours: i64) -> bool {
-    let last_synced: Option<String> = conn
-        .query_row(
-            "SELECT value FROM metadata WHERE key = 'last_synced'",
-            [],
-            |r| r.get(0),
-        )
-        .ok();
-    let addon_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM addons", [], |r| r.get(0))
-        .unwrap_or(0);
-    if addon_count == 0 {
-        return true;
-    }
-    match last_synced.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok()) {
-        Some(dt) => {
-            let age = chrono::Utc::now().signed_duration_since(dt.with_timezone(&chrono::Utc));
-            age > chrono::Duration::hours(max_age_hours)
-        }
-        None => true,
-    }
-}
-
 fn row_to_addon(row: &rusqlite::Row) -> rusqlite::Result<Addon> {
     let dirs_csv: String = row.get(9)?;
     let directories: Vec<String> = if dirs_csv.is_empty() {

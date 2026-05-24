@@ -63,7 +63,7 @@ Two halves communicating via Tauri IPC commands and broadcast events.
 4. Emits `catalog:sync:done` with `CatalogMeta`.
 5. `App.tsx` bumps `catalogTick` → pages remount and re-fetch from SQLite.
 
-Sync happens on **every boot** (user preference). `db::is_stale()` and `AppState::is_stale()` exist for re-introducing a TTL later — currently unused, will trigger an `unused` warning until adopted.
+Sync happens on **every boot** (user preference). No TTL gating today — if you need one later, compare `metadata.last_synced` (RFC3339) against `Utc::now()` before kicking off the task in `lib.rs::setup`.
 
 ## Design system
 
