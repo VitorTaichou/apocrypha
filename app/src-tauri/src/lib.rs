@@ -84,6 +84,12 @@ pub fn run() {
     let start_hidden = std::env::args().any(|a| a == HIDDEN_ARG);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // A second launch (desktop shortcut, autostart, etc.) should just
+            // surface the running window instead of spawning a duplicate
+            // process — otherwise we leak a tray icon per launch.
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![HIDDEN_ARG]),
