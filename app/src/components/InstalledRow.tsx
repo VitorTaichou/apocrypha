@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpCircle, Check, Loader2, Trash2 } from "lucide-react";
 import type { InstalledAddon } from "@/lib/types";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { formatRelativeTime } from "@/lib/format";
 
 interface InstalledRowProps {
   addon: InstalledAddon;
@@ -41,6 +42,27 @@ function InstalledThumb({ addon }: { addon: InstalledAddon }) {
       onError={() => setErrored(true)}
       className="h-11 w-11 shrink-0 rounded-md border border-[var(--color-border)] object-cover"
     />
+  );
+}
+
+function TimestampsLine({ addon }: { addon: InstalledAddon }) {
+  const released = addon.catalog_last_updated
+    ? formatRelativeTime(addon.catalog_last_updated)
+    : null;
+  const installed = addon.installed_at
+    ? formatRelativeTime(addon.installed_at)
+    : null;
+
+  if (!released && !installed) return null;
+
+  return (
+    <p className="mt-0.5 truncate text-[11px] text-[var(--color-outline)]">
+      {released ? <span>Released {released}</span> : null}
+      {released && installed ? (
+        <span className="mx-1.5 text-[var(--color-outline-variant)]">·</span>
+      ) : null}
+      {installed ? <span>Installed {installed}</span> : null}
+    </p>
   );
 }
 
@@ -126,7 +148,7 @@ function UninstallButton({
         e.stopPropagation();
         onUninstall?.();
       }}
-      className={`${ACTION_BASE} border-[var(--color-border)] bg-[var(--color-surface-low)] text-[var(--color-on-surface-variant)] transition-colors hover:border-[var(--color-error)] hover:text-[var(--color-error)]`}
+      className={`${ACTION_BASE} border-[var(--color-border)] bg-[var(--color-surface-low)] text-[var(--color-on-surface-variant)] transition-colors group-hover:border-[var(--color-on-surface-variant)]/40 group-hover:bg-[var(--color-surface-lowest)] hover:!border-[var(--color-error)] hover:text-[var(--color-error)]`}
     >
       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
       Uninstall
@@ -177,6 +199,7 @@ export function InstalledRow({
         <p className="truncate text-xs text-[var(--color-on-surface-variant)]">
           {addon.author ? `by ${addon.author}` : addon.dir_name}
         </p>
+        <TimestampsLine addon={addon} />
       </div>
 
       <div className="flex shrink-0 items-center">

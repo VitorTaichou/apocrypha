@@ -39,6 +39,8 @@ pub struct InstalledAddon {
     pub category_id: Option<String>,
     pub thumbnail_url: Option<String>,
     pub update_available: bool,
+    pub catalog_last_updated: Option<i64>,
+    pub installed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

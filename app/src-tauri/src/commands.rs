@@ -23,6 +23,7 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
     }
     let mut catalog_map: HashMap<String, CatalogMatch> = HashMap::new();
     let mut install_markers: HashMap<String, i64> = HashMap::new();
+    let mut install_timestamps: HashMap<String, String> = HashMap::new();
     {
         let conn = state.db.lock().unwrap();
         for a in installed.iter() {
@@ -35,6 +36,13 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
                 {
                     if let Ok(n) = marker.parse::<i64>() {
                         install_markers.insert(addon.id.clone(), n);
+                    }
+                }
+                if let Some(at) =
+                    db::get_metadata(&conn, &format!("installed_at:{}", addon.id))
+                {
+                    if !at.is_empty() {
+                        install_timestamps.insert(addon.id.clone(), at);
                     }
                 }
                 catalog_map.insert(
@@ -57,6 +65,8 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             a.catalog_version = Some(m.version.clone());
             a.category_id = m.category_id.clone();
             a.thumbnail_url = m.thumbnail_url.clone();
+            a.catalog_last_updated = if m.last_updated > 0 { Some(m.last_updated) } else { None };
+            a.installed_at = install_timestamps.get(&m.id).cloned();
 
             // Two paths to "up to date":
             //   1. The local manifest's `## Version:` matches the catalog.

@@ -89,6 +89,8 @@ fn empty(dir_name: &str) -> InstalledAddon {
         category_id: None,
         thumbnail_url: None,
         update_available: false,
+        catalog_last_updated: None,
+        installed_at: None,
     }
 }
 
@@ -139,6 +141,8 @@ fn parse_manifest(path: &Path, fallback_name: &str) -> Result<InstalledAddon> {
         category_id: None,
         thumbnail_url: None,
         update_available: false,
+        catalog_last_updated: None,
+        installed_at: None,
     })
 }
 
