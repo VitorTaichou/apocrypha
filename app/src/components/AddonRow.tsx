@@ -121,7 +121,7 @@ function ActionButton({
         e.stopPropagation();
         onInstall?.();
       }}
-      className={`${ACTION_BASE} border-[var(--color-border)] bg-[var(--color-surface-low)] text-[var(--color-on-surface-variant)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]`}
+      className={`${ACTION_BASE} border-[var(--color-border)] bg-[var(--color-surface-low)] text-[var(--color-on-surface-variant)] transition-colors group-hover:border-[var(--color-on-surface-variant)]/40 group-hover:bg-[var(--color-surface-lowest)] hover:!border-[var(--color-primary)] hover:text-[var(--color-primary)]`}
     >
       <DownloadCloud className="h-3.5 w-3.5" strokeWidth={1.75} />
       Install
