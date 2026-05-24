@@ -4,10 +4,9 @@
 
 **A modern addon manager for The Elder Scrolls Online.**
 
-Fast. Lightweight. Beautifully dark. A real replacement for Minion.
+Fast. Lightweight. Beautifully dark.
 
-[**Download for Windows**](https://github.com/VitorTaichou/apocrypha/releases/latest) ·
-[**Download for Linux**](https://github.com/VitorTaichou/apocrypha/releases/latest) ·
+[**Download**](https://github.com/VitorTaichou/apocrypha/releases/latest) ·
 [Report a bug](https://github.com/VitorTaichou/apocrypha/issues) ·
 [Discussions](https://github.com/VitorTaichou/apocrypha/discussions)
 
@@ -63,21 +62,15 @@ After the first install, Apocrypha can update itself: open **Settings → App Up
 
 ## 🎯 Why this exists
 
-[Minion](https://minion.mmoui.com/) — the incumbent ESO addon manager — is a Java desktop app from another era. It's slow to start, heavy in memory, awkward on Steam Deck, and the UX hasn't aged well.
+This is a personal project — I wanted something native, lightweight, and tray-friendly for managing my own ESO addons, and figured it might be useful to other people too.
 
-Apocrypha is a from-scratch native take:
+A few things Apocrypha tries to do well:
 
-| | Minion | Apocrypha |
-|---|---|---|
-| Installer size | ~150 MB (ships a JRE) | **~7 MB** |
-| Cold start | 3–8s | **< 1s** |
-| Memory at rest | 200–400 MB | **~80 MB** |
-| Runs in tray / background | ❌ | ✅ |
-| Background auto-update | ❌ | ✅ (skips while ESO is running) |
-| SavedVariables backup | ❌ | ✅ |
-| Steam Deck native | ❌ | ✅ (AppImage) |
-| Open source | ❌ | ✅ (this repo) |
-| Self-updating | Limited | ✅ Signed updates over GitHub |
+- **Native and small** — a Rust + Tauri binary around ~10 MB, cold start in well under a second.
+- **Background-friendly** — lives in the system tray, can auto-update addons while ESO is closed, skips work while the game is running.
+- **Safer updates** — SavedVariables snapshots before risky updates, pre-clean step that handles manifest rename quirks.
+- **Steam Deck native** — ships as an AppImage that runs without extra setup.
+- **Open source** — the source is right here, no telemetry, no accounts.
 
 ---
 
@@ -132,7 +125,7 @@ For the full architecture overview — module layout, IPC contracts, design toke
 - [ ] **winget** submission
 - [ ] **Flathub** submission
 - [ ] Conflict / health detector (orphan dependencies, known incompatibilities)
-- [ ] Import from Minion (existing library + SavedVars)
+- [ ] Import existing libraries and SavedVars from other managers
 
 ---
 
@@ -154,7 +147,7 @@ To be finalized once a public 1.0 release ships. Source is open for inspection a
 
 - **Catalog data** — [ESOUI](https://www.esoui.com/) and the MMOUI v3 API
 - **Tentacle brand artwork** — by a friend (the chest with tentacles)
-- **Inspiration & prior art** — [arviceblot/eso-addons](https://github.com/arviceblot/eso-addons), [brainsnorkel/eso-addon-manager](https://github.com/brainsnorkel/eso-addon-manager), and years of community frustration with Minion
+- **Inspiration & prior art** — [arviceblot/eso-addons](https://github.com/arviceblot/eso-addons) and [brainsnorkel/eso-addon-manager](https://github.com/brainsnorkel/eso-addon-manager)
 - **Stack** — built with [Tauri](https://tauri.app/), [React](https://react.dev/), [Tailwind](https://tailwindcss.com/), and the rest of the open-source ecosystem
 
 ---

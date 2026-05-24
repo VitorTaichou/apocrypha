@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use chrono::Utc;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::io::Cursor;
@@ -96,6 +97,10 @@ async fn install_one(
         if let Ok(Some(addon)) = db::find_by_id(&conn, &addon_id) {
             let key = format!("installed:{}", addon.id);
             let _ = db::set_metadata(&conn, &key, &addon.last_updated.to_string());
+            // Also record wall-clock time of this install so the UI can show
+            // "Installed Xd ago" alongside the catalog's release date.
+            let at_key = format!("installed_at:{}", addon.id);
+            let _ = db::set_metadata(&conn, &at_key, &Utc::now().to_rfc3339());
         }
     }
 
@@ -244,6 +249,8 @@ pub fn clear_install_marker(state: &AppState, catalog_id: &str) {
     let conn = state.db.lock().unwrap();
     let key = format!("installed:{}", catalog_id);
     let _ = db::set_metadata(&conn, &key, "");
+    let at_key = format!("installed_at:{}", catalog_id);
+    let _ = db::set_metadata(&conn, &at_key, "");
 }
 
 pub fn uninstall(addons_dir: &Path, dir_name: &str) -> Result<PathBuf> {

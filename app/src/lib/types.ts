@@ -34,6 +34,8 @@ export interface InstalledAddon {
   category_id: string | null;
   thumbnail_url: string | null;
   update_available: boolean;
+  catalog_last_updated: number | null;
+  installed_at: string | null;
 }
 
 export interface CatalogMeta {

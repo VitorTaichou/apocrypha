@@ -13,7 +13,6 @@ use crate::models::CatalogMeta;
 use crate::scanner;
 
 pub struct AppState {
-    pub data_dir: PathBuf,
     pub db: Mutex<Connection>,
     pub addons_dir: Mutex<PathBuf>,
     pub backups_dir: PathBuf,
@@ -48,7 +47,6 @@ impl AppState {
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(0);
         Ok(Self {
-            data_dir,
             db: Mutex::new(conn),
             addons_dir: Mutex::new(addons_dir),
             backups_dir,
@@ -83,11 +81,6 @@ impl AppState {
 
     pub fn auto_update_interval(&self) -> u64 {
         self.auto_update_interval_minutes.load(Ordering::SeqCst)
-    }
-
-    pub fn is_stale(&self, max_age_hours: i64) -> bool {
-        let conn = self.db.lock().unwrap();
-        db::is_stale(&conn, max_age_hours)
     }
 
     pub async fn run_sync(&self) -> Result<CatalogMeta> {

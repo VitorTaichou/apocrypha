@@ -22,10 +22,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # One installer per OS keeps the release page focused on the file
+          # most users actually want. The updater artifacts (.msi.zip,
+          # .AppImage.tar.gz and their .sig pairs) are still produced because
+          # createUpdaterArtifacts is on in tauri.conf.json — they just sit
+          # under "Show all assets" rather than crowding the front of the page.
           - platform: windows-latest
-            args: ""
+            args: "--bundles msi"
           - platform: ubuntu-22.04
-            args: ""
+            args: "--bundles appimage"
 
     runs-on: ${{ matrix.platform }}
 
@@ -94,7 +99,6 @@ jobs:
             echo ""
             echo "- Windows: the .msi installer attached below"
             echo "- Linux / Steam Deck: the .AppImage (chmod +x and run)"
-            echo "- Also available: .deb, .rpm, NSIS .exe — all signed for the in-app updater"
             echo ""
             echo "Heads-up for Windows"
             echo ""

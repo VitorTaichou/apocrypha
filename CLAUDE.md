@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Apocrypha is a desktop addon manager for *The Elder Scrolls Online*, built to replace Minion (Java-based, slow) with a modern, lightweight alternative. Codename "Archivist".
+Apocrypha is a desktop addon manager for *The Elder Scrolls Online* — a native, lightweight take on managing the ESOUI catalog from your machine. Codename "Archivist".
 
 ## Workspace layout
 
@@ -12,10 +12,7 @@ The repo root is single-project:
 
 - **`app/`** — the actual Apocrypha project. Tauri 2 + Rust + React + TypeScript. All work happens here.
 
-Earlier scaffolding referenced a Python "ESO Power Lite" project and a
-Google Stitch mockup set as design seeds; both have been removed once the
-visual identity and architecture were settled in code. The design system
-now lives entirely in `app/src/index.css` (Tailwind 4 `@theme` tokens).
+The design system lives entirely in `app/src/index.css` (Tailwind 4 `@theme` tokens).
 
 ## Commands (run from `app/`)
 
@@ -63,7 +60,7 @@ Two halves communicating via Tauri IPC commands and broadcast events.
 4. Emits `catalog:sync:done` with `CatalogMeta`.
 5. `App.tsx` bumps `catalogTick` → pages remount and re-fetch from SQLite.
 
-Sync happens on **every boot** (user preference). `db::is_stale()` and `AppState::is_stale()` exist for re-introducing a TTL later — currently unused, will trigger an `unused` warning until adopted.
+Sync happens on **every boot** by design. No TTL gating today — if you need one later, compare `metadata.last_synced` (RFC3339) against `Utc::now()` before kicking off the task in `lib.rs::setup`.
 
 ## Design system
 
@@ -74,25 +71,25 @@ token Tailwind picks up. Key facts:
 - **Newsreader** (serif) for the wordmark, **Geist** (sans) for body — both via Google Fonts
 - Primary `#67D9CA`, surface `#101413`, border `#1A2422`
 
-Per the user: use Newsreader **only** for the "APOCRYPHA" logo in the sidebar. Everything else is Geist (including page titles like "Search", "Installed", "Settings").
+Design rule: Newsreader is reserved for the "APOCRYPHA" wordmark in the sidebar. Everything else (page titles like "Search", "Installed", "Settings", and all body text) uses Geist.
 
 ## Important gotchas
 
 - **PowerShell + npm**: On a default Windows install, the bare `npm` command resolves to `npm.ps1` (Node 24+) which is blocked by the `Restricted` ExecutionPolicy. Fix: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`. If `npm --version` returns silently in PowerShell, that's the cause.
-- **OneDrive Documents redirect**: On Windows with OneDrive enabled, "Documents" is redirected to `~/OneDrive/Documentos` (Portuguese in this user's case). `dirs::document_dir()` respects this via the Windows Known Folder API, so the scanner finds the right path automatically. If it doesn't, user override is in Settings → AddOns Folder.
+- **OneDrive Documents redirect**: On Windows with OneDrive enabled, the "Documents" folder is redirected under `~/OneDrive/...` and may be localized depending on Windows display language. `dirs::document_dir()` respects this via the Windows Known Folder API, so the scanner finds the right path automatically. If it doesn't, the override is in Settings → AddOns Folder.
 - **AddOns folder override is not persisted yet** (known gap). Changing it in Settings only lasts for the current process.
 - **PowerShell wraps cargo stderr**: `cargo` writes progress to stderr, and PowerShell tags it as `NativeCommandError` even on success. Look at the "Finished" line and exit code, not the stderr wrapping.
 - **PATH refresh**: After `winget install`-ing new tools, the current shell session has a stale PATH. Refresh inline: `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')`. Most PowerShell commands in this workspace prefix this.
-- **MMOUI API has no pagination and no server-side search**. The full catalog (5–10 MB JSON) is downloaded every sync. This is why the local SQLite mirror exists — every competitor manager (Minion, ESO Power Lite, arviceblot/eso-addons) does the same.
+- **MMOUI API has no pagination and no server-side search**. The full catalog (5–10 MB JSON) is downloaded every sync. This is why the local SQLite mirror exists — other addon managers built on the same API take the same approach.
 - **Manifest version vs catalog version differ regularly**. The author's `## Version:` inside `Foo.txt`/`Foo.addon` is independent of MMOUI's `UIVersion`. Update detection compares the local manifest string against `UIVersion` after normalising leading `v`/`V`.
 - **Install/Update pre-cleans the target dir**. Without this, addons that change manifest extension between releases (e.g. `.txt` → `.addon`) leave orphan files that confuse the scanner. SavedVariables live in `live/SavedVariables/`, NOT in the AddOns subdirectory, so the wipe is safe.
 - **Bundle size**: production build is ~265 KB JS, ~20 KB CSS, ~10 MB Rust binary. Stay frugal with new lucide icons (~1 KB each, but they add up if imported broadly).
 
 ## Commits
 
-User wants:
-- Commit messages in **English**, natural tone (no Conventional Commits ceremony unless asked)
-- **No Co-Authored-By trailer** for Claude
+Project convention:
+- Commit messages in **English**, natural tone (no Conventional Commits ceremony)
+- **No Co-Authored-By trailers** in commit messages
 
 ## Branching & releases
 
@@ -131,7 +128,7 @@ GitHub. Open it, polish the notes, hit Publish.
 ## Distribution & release (not wired yet)
 
 These pieces have been left as TODO because they need external credentials
-or a design pass. Wire them when the user is ready to ship a public build.
+or a design pass. Wire them up before shipping a public, polished build.
 
 ### App icon
 
@@ -207,12 +204,3 @@ To activate updates for a public release:
 Code signing the MSI itself (the SmartScreen warning) is a separate
 concern — that's the Azure Trusted Signing path above and is unrelated
 to Tauri Updater.
-
-## Memory system
-
-User has auto-memory at `~/.claude/projects/C--Users-vitor-workspace-apocrypha/memory/` (indexed in `MEMORY.md`). Notable entries:
-- `user_profile.md` — PT-BR responses, voice dictation common
-- `project_apocrypha.md` — stack decisions and constraints
-- `feedback_no_code_reuse.md` — never propose porting code from `ESO-addon--manager/`
-- `design_assets.md` — pointers into the Stitch mockups
-- `competitor_landscape.md` — existing ESO addon managers
