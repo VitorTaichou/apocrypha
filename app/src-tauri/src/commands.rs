@@ -30,7 +30,19 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             if catalog_map.contains_key(&a.dir_name) {
                 continue;
             }
-            if let Ok(Some(addon)) = db::find_by_directory(&conn, &a.dir_name) {
+            // Prefer the explicit `installed_dir:{dir}` → catalog_id mapping
+            // recorded at install time. It disambiguates the case where two
+            // catalog rows declare the same directory (e.g. EsoBR 2256 and
+            // the obsolete Reforged 4541 both ship `EsoBR_Reforged/`).
+            // Fall back to `find_by_directory` for legacy installs and for
+            // addons placed manually by the user.
+            let pinned_id = db::get_metadata(&conn, &format!("installed_dir:{}", a.dir_name))
+                .filter(|s| !s.is_empty());
+            let resolved = match pinned_id {
+                Some(id) => db::find_by_id(&conn, &id).ok().flatten(),
+                None => db::find_by_directory(&conn, &a.dir_name).ok().flatten(),
+            };
+            if let Some(addon) = resolved {
                 if let Some(marker) =
                     db::get_metadata(&conn, &format!("installed:{}", addon.id))
                 {
@@ -277,21 +289,34 @@ pub fn uninstall_addon(
     state: State<'_, AppState>,
     dir_name: String,
 ) -> CmdResult<()> {
-    // Look up the catalog id before deleting, so we can clear its install
-    // marker too. Not finding one is fine — orphan addons just skip this step.
+    // Resolve catalog id: prefer the pinned mapping written at install time,
+    // fall back to the directory→catalog lookup for legacy / manual installs.
     let catalog_id = {
         let conn = state.db.lock().unwrap();
-        db::find_by_directory(&conn, &dir_name)
-            .ok()
-            .flatten()
-            .map(|a| a.id)
+        let pinned = db::get_metadata(&conn, &format!("installed_dir:{}", dir_name))
+            .filter(|s| !s.is_empty());
+        pinned.or_else(|| {
+            db::find_by_directory(&conn, &dir_name)
+                .ok()
+                .flatten()
+                .map(|a| a.id)
+        })
     };
 
     let addons_dir = state.addons_dir.lock().unwrap().clone();
     match installer::uninstall(&addons_dir, &dir_name) {
         Ok(_) => {
-            if let Some(id) = catalog_id {
-                installer::clear_install_marker(state.inner(), &id);
+            // Sweep client overrides (gamedata/lang/br.lang, EsoUI/lang/*.str
+            // etc.) that this addon dropped under `live/`. Only safe when we
+            // know which catalog row owns this directory.
+            if let Some(id) = &catalog_id {
+                let files = installer::client_files_for(state.inner(), id);
+                if !files.is_empty() {
+                    if let Some(live) = installer::live_dir_for(&addons_dir) {
+                        installer::uninstall_client_files(&live, &files);
+                    }
+                }
+                installer::clear_install_marker(state.inner(), id, &dir_name);
             }
             let _ = app.emit(
                 "addon:uninstall:done",

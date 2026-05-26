@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { ChevronDown, Loader2, Search as SearchIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -28,7 +28,14 @@ export function SearchPage() {
 
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [uninstallingDirs, setUninstallingDirs] = useState<Set<string>>(new Set());
-  const [installedDirs, setInstalledDirs] = useState<Set<string>>(new Set());
+  // catalog_id → installed dir_name. Sourced from listInstalled() each refresh.
+  // Keyed by catalog_id (not dir_name) so two catalog rows that declare the
+  // same directory — e.g. EsoBR 2256 and the obsolete Reforged 4541 both
+  // ship `EsoBR_Reforged/` — don't both light up as "installed" when only
+  // one is actually on disk.
+  const [installedByCatalogId, setInstalledByCatalogId] = useState<Map<string, string>>(
+    new Map(),
+  );
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
 
   useEffect(() => {
@@ -43,7 +50,11 @@ export function SearchPage() {
   const refreshInstalledSet = useCallback(async () => {
     try {
       const list = await api.listInstalled();
-      setInstalledDirs(new Set(list.map((a) => a.dir_name)));
+      const next = new Map<string, string>();
+      for (const a of list) {
+        if (a.catalog_id) next.set(a.catalog_id, a.dir_name);
+      }
+      setInstalledByCatalogId(next);
     } catch {
       // empty
     }
@@ -156,19 +167,19 @@ export function SearchPage() {
     api.installAddon(addon.id).catch((e) => console.error("install error:", e));
   }, []);
 
-  const isAddonInstalled = useMemo(() => {
-    return (addon: Addon) => addon.directories.some((d) => installedDirs.has(d));
-  }, [installedDirs]);
+  const isAddonInstalled = useCallback(
+    (addon: Addon) => installedByCatalogId.has(addon.id),
+    [installedByCatalogId],
+  );
 
   const installedDirFor = useCallback(
-    (addon: Addon): string | null =>
-      addon.directories.find((d) => installedDirs.has(d)) ?? null,
-    [installedDirs],
+    (addon: Addon): string | null => installedByCatalogId.get(addon.id) ?? null,
+    [installedByCatalogId],
   );
 
   const handleUninstall = useCallback(
     async (addon: Addon) => {
-      const dir = addon.directories.find((d) => installedDirs.has(d));
+      const dir = installedByCatalogId.get(addon.id);
       if (!dir) return;
       setUninstallingDirs((prev) => {
         const next = new Set(prev);
@@ -181,12 +192,15 @@ export function SearchPage() {
         console.error("uninstall error:", e);
       }
     },
-    [installedDirs],
+    [installedByCatalogId],
   );
 
   const isAddonUninstalling = useCallback(
-    (addon: Addon) => addon.directories.some((d) => uninstallingDirs.has(d)),
-    [uninstallingDirs],
+    (addon: Addon) => {
+      const dir = installedByCatalogId.get(addon.id);
+      return dir ? uninstallingDirs.has(dir) : false;
+    },
+    [installedByCatalogId, uninstallingDirs],
   );
 
   const empty = !loading && addons.length === 0 && total === 0;
