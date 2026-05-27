@@ -80,28 +80,32 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             a.catalog_last_updated = if m.last_updated > 0 { Some(m.last_updated) } else { None };
             a.installed_at = install_timestamps.get(&m.id).cloned();
 
-            // Two paths to "up to date":
-            //   1. The local manifest's `## Version:` matches the catalog.
-            //   2. We have a marker proving we installed this exact catalog
-            //      timestamp (covers authors who bump ESOUI without bumping
-            //      the manifest string — the loop would otherwise never end).
-            let version_matches = match a.version.as_deref() {
-                Some(local) => normalize_version(local) == normalize_version(&m.version),
-                None => false,
-            };
+            // Decide "up to date" depending on what we know about this addon:
+            //
+            // - If we have a marker (= we installed it ourselves), trust ONLY
+            //   the marker. Compare the catalog's last_updated against the
+            //   timestamp we recorded at install time. Catches the case where
+            //   an author re-publishes on ESOUI without bumping the manifest
+            //   string — Minion flags those as updatable, and so should we.
+            //
+            // - If we don't have a marker (addon was placed manually / by
+            //   another manager), fall back to string equality on the version
+            //   line. Best we can do without an install timestamp of our own.
+            //
             // Older builds stored UIDate in milliseconds; new builds store
-            // unix-seconds. Normalize both sides so a re-install isn't
-            // misreported as "update available" after upgrading.
+            // unix-seconds. Normalize both sides so we compare apples-to-apples
+            // even if the marker was written by a previous version.
             let normalize = |t: i64| if t > 100_000_000_000 { t / 1000 } else { t };
-            let marker_matches = install_markers
-                .get(&m.id)
-                .map(|t| {
-                    let local = normalize(*t);
-                    let catalog = normalize(m.last_updated);
-                    local > 0 && local == catalog
-                })
-                .unwrap_or(false);
-            a.update_available = !(version_matches || marker_matches);
+            let marker = install_markers.get(&m.id).copied().unwrap_or(0);
+            let has_marker = marker > 0;
+            a.update_available = if has_marker {
+                normalize(marker) != normalize(m.last_updated)
+            } else {
+                match a.version.as_deref() {
+                    Some(local) => normalize_version(local) != normalize_version(&m.version),
+                    None => true,
+                }
+            };
         }
     }
 
@@ -314,16 +318,7 @@ pub fn uninstall_addon(
     let addons_dir = state.addons_dir.lock().unwrap().clone();
     match installer::uninstall(&addons_dir, &dir_name) {
         Ok(_) => {
-            // Sweep client overrides (gamedata/lang/br.lang, EsoUI/lang/*.str
-            // etc.) that this addon dropped under `live/`. Only safe when we
-            // know which catalog row owns this directory.
             if let Some(id) = &catalog_id {
-                let files = installer::client_files_for(state.inner(), id);
-                if !files.is_empty() {
-                    if let Some(live) = installer::live_dir_for(&addons_dir) {
-                        installer::uninstall_client_files(&live, &files);
-                    }
-                }
                 installer::clear_install_marker(state.inner(), id, &dir_name);
             }
             let _ = app.emit(

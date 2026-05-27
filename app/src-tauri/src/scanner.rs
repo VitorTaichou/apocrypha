@@ -36,6 +36,15 @@ pub fn default_addons_dir() -> Option<PathBuf> {
     }
 }
 
+/// Directories the ESO client itself drops inside `AddOns/` as part of
+/// translation packs (and similar). Minion treats them as belonging to the
+/// addon that shipped them — one catalog entry, one row in the UI. We do
+/// the same by hiding them from the installed list. They're rooted by the
+/// catalog row's directory list, not by their own manifest.
+fn is_aux_client_dir(name: &str) -> bool {
+    matches!(name, "gamedata" | "EsoUI" | "fonts" | "lang")
+}
+
 pub fn scan(addons_dir: &Path) -> Result<Vec<InstalledAddon>> {
     if !addons_dir.exists() {
         return Ok(Vec::new());
@@ -48,6 +57,9 @@ pub fn scan(addons_dir: &Path) -> Result<Vec<InstalledAddon>> {
         }
         let dir_name = entry.file_name().to_string_lossy().to_string();
         if dir_name.starts_with('.') {
+            continue;
+        }
+        if is_aux_client_dir(&dir_name) {
             continue;
         }
         let dir_path = entry.path();
