@@ -167,7 +167,10 @@ fn parse_addon(v: &Value) -> Option<Addon> {
         .and_then(|x| x.as_str())
         .unwrap_or("")
         .to_string();
-    let last_updated = as_i64(v.get("UIDate"));
+    // MMOUI returns UIDate in milliseconds, but our internal contract is
+    // unix-seconds (matches `chrono::Utc::now().timestamp()` and what the
+    // frontend's formatRelativeTime expects). Normalize here.
+    let last_updated = as_i64(v.get("UIDate")) / 1000;
     let download_total = as_i64(v.get("UIDownloadTotal"));
     let download_monthly = as_i64(v.get("UIDownloadMonthly"));
     let favorite_total = as_i64(v.get("UIFavoriteTotal"));
