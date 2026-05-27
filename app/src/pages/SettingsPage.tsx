@@ -182,7 +182,7 @@ export function SettingsPage() {
           description="Version, links, and credits."
         >
           <div className="space-y-3 text-base text-[var(--color-on-surface-variant)]">
-            <p>Apocrypha v0.1.0</p>
+            <p>Apocrypha v{__APP_VERSION__}</p>
             <p className="text-sm text-[var(--color-outline)]">
               Built with Tauri 2, Rust, React, and Tailwind.
             </p>

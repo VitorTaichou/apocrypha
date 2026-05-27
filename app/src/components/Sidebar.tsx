@@ -50,6 +50,9 @@ export function Sidebar({ current, onNavigate }: SidebarProps) {
         <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[var(--color-on-surface-variant)]">
           A modern ESO addon manager
         </p>
+        <p className="mt-1 font-mono text-[10px] tracking-wider text-[var(--color-outline)]">
+          v{__APP_VERSION__}
+        </p>
       </div>
 
       <nav className="relative z-10 flex flex-1 flex-col gap-1.5 px-4">
