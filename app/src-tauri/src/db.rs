@@ -248,6 +248,28 @@ pub fn find_by_directory(conn: &Connection, dir_name: &str) -> Result<Option<Add
     }
 }
 
+/// Like `find_by_directory` but returns every catalog row that declares the
+/// given directory. Used to detect fork-successor cases where two catalog
+/// entries ship the same directory (e.g. an abandoned original and a
+/// maintained re-upload) and the more recent one should supersede.
+pub fn find_all_by_directory(conn: &Connection, dir_name: &str) -> Result<Vec<Addon>> {
+    let pattern = format!("%,{},%", dir_name);
+    let mut stmt = conn.prepare(
+        "SELECT id, category_id, name, author, version, last_updated,
+                download_total, download_monthly, favorite_total, directories, file_info_url,
+                thumbnail_url, images
+         FROM addons
+         WHERE ',' || directories || ',' LIKE ?1
+            OR name = ?2",
+    )?;
+    let rows = stmt.query_map(params![pattern, dir_name], row_to_addon)?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
 pub fn categories(conn: &Connection) -> Result<Vec<Category>> {
     let mut stmt = conn.prepare(
         "SELECT id, title, icon, file_count FROM categories

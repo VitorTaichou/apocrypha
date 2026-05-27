@@ -38,10 +38,28 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             // addons placed manually by the user.
             let pinned_id = db::get_metadata(&conn, &format!("installed_dir:{}", a.dir_name))
                 .filter(|s| !s.is_empty());
-            let resolved = match pinned_id {
+            let resolved_initial = match pinned_id {
                 Some(id) => db::find_by_id(&conn, &id).ok().flatten(),
                 None => db::find_by_directory(&conn, &a.dir_name).ok().flatten(),
             };
+
+            // Fork-successor detection: when two catalog rows declare the
+            // same directory (e.g. PerfectWeave 2918 abandoned, 4468 bugfix
+            // re-upload), point at the one with the most recent `last_updated`.
+            // Matches what Minion shows — a maintained fork supersedes the
+            // original. Falls back to the originally resolved row when there's
+            // no better candidate.
+            let resolved = resolved_initial.map(|initial| {
+                match db::find_all_by_directory(&conn, &a.dir_name) {
+                    Ok(all) if all.len() > 1 => all
+                        .into_iter()
+                        .max_by_key(|x| x.last_updated)
+                        .filter(|best| best.last_updated > initial.last_updated)
+                        .unwrap_or(initial),
+                    _ => initial,
+                }
+            });
+
             if let Some(addon) = resolved {
                 if let Some(marker) =
                     db::get_metadata(&conn, &format!("installed:{}", addon.id))
