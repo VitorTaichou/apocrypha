@@ -8,7 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Addon } from "@/lib/types";
-import { formatCount } from "@/lib/format";
+import { formatCount, formatRelativeTime } from "@/lib/format";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 interface AddonRowProps {
@@ -172,6 +172,14 @@ export function AddonRow({
         </div>
         <p className="truncate text-xs text-[var(--color-on-surface-variant)]">
           by {addon.author || "Unknown"}
+          {addon.last_updated ? (
+            <>
+              <span className="mx-1.5 text-[var(--color-outline-variant)]">·</span>
+              <span className="text-[var(--color-outline)]">
+                Updated {formatRelativeTime(addon.last_updated)}
+              </span>
+            </>
+          ) : null}
         </p>
       </div>
 

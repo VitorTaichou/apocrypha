@@ -31,6 +31,7 @@ interface AddonDetailPanelProps {
   addon: Addon;
   action: ActionState;
   installedDirName?: string | null;
+  installedAt?: string | null;
   onClose: () => void;
   onInstall?: () => void;
   onUpdate?: () => void;
@@ -127,6 +128,40 @@ function ResizeHandle({ onResize }: { onResize: (width: number) => void }) {
       />
     </div>
   );
+}
+
+// The "as {dir}" badge only earns its place when the dir name would
+// actually surprise the user — e.g. EsoBR (2256) lands in a folder called
+// `EsoBR_Reforged/`. When the catalog name and the dir name are obviously
+// the same addon (LibAddonMenu-2.0 / LibAddonMenu-2.0, "pChat (...)" / pChat,
+// "Dolgubon's Lazy Writ Crafter" / DolgubonsLazyWritCreator — 3 chars of
+// typo-level drift), the badge is noise.
+function levenshtein(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const dp: number[][] = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= a.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      dp[i][j] =
+        b[i - 1] === a[j - 1]
+          ? dp[i - 1][j - 1]
+          : Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]) + 1;
+    }
+  }
+  return dp[b.length][a.length];
+}
+
+function shouldShowInstalledAs(addonName: string, dirName: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const a = normalize(addonName);
+  const b = normalize(dirName);
+  if (!a || !b) return true;
+  if (a.includes(b) || b.includes(a)) return false;
+  const dist = levenshtein(a, b);
+  const maxLen = Math.max(a.length, b.length);
+  // Hide when at least 80% of characters match.
+  return dist / maxLen > 0.2;
 }
 
 function initials(name: string): string {
@@ -319,6 +354,7 @@ export function AddonDetailPanel({
   addon,
   action,
   installedDirName,
+  installedAt,
   onClose,
   onInstall,
   onUpdate,
@@ -414,11 +450,16 @@ export function AddonDetailPanel({
               ) : null}
             </p>
             {addon.version ? (
-              <p className="mt-2 inline-flex items-center gap-2 font-mono text-xs text-[var(--color-outline)]">
+              <p className="mt-2 inline-flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--color-outline)]">
                 v{addon.version}
-                {installedDirName ? (
+                {installedAt ? (
                   <span className="rounded-full bg-[var(--color-primary-container)]/15 px-2 py-0.5 text-[10px] text-[var(--color-primary)]">
-                    Installed as {installedDirName}
+                    Installed {formatRelativeTime(installedAt)}
+                  </span>
+                ) : null}
+                {installedDirName && shouldShowInstalledAs(addon.name, installedDirName) ? (
+                  <span className="rounded-full bg-[var(--color-primary-container)]/15 px-2 py-0.5 text-[10px] text-[var(--color-primary)]">
+                    as {installedDirName}
                   </span>
                 ) : null}
               </p>
@@ -438,7 +479,7 @@ export function AddonDetailPanel({
             <Stat label="Downloads" value={formatCount(addon.download_total)} icon={Download} />
             <Stat label="Favorites" value={formatCount(addon.favorite_total)} icon={Heart} />
             <Stat
-              label="Updated"
+              label="Last Update"
               value={
                 addon.last_updated
                   ? formatRelativeTime(addon.last_updated)

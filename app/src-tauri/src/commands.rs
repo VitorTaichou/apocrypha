@@ -89,9 +89,17 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
                 Some(local) => normalize_version(local) == normalize_version(&m.version),
                 None => false,
             };
+            // Older builds stored UIDate in milliseconds; new builds store
+            // unix-seconds. Normalize both sides so a re-install isn't
+            // misreported as "update available" after upgrading.
+            let normalize = |t: i64| if t > 100_000_000_000 { t / 1000 } else { t };
             let marker_matches = install_markers
                 .get(&m.id)
-                .map(|t| *t > 0 && *t == m.last_updated)
+                .map(|t| {
+                    let local = normalize(*t);
+                    let catalog = normalize(m.last_updated);
+                    local > 0 && local == catalog
+                })
                 .unwrap_or(false);
             a.update_available = !(version_matches || marker_matches);
         }

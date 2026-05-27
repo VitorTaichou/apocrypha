@@ -315,6 +315,7 @@ export function InstalledPage() {
           addon={selectedCatalogAddon}
           action={panelAction}
           installedDirName={currentSelectedInstalled.dir_name}
+          installedAt={currentSelectedInstalled.installed_at}
           onClose={closePanel}
           onUpdate={() => handleUpdate(currentSelectedInstalled)}
           onUninstall={() => handleUninstall(currentSelectedInstalled)}

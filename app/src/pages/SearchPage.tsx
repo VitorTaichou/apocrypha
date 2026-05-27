@@ -28,14 +28,14 @@ export function SearchPage() {
 
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [uninstallingDirs, setUninstallingDirs] = useState<Set<string>>(new Set());
-  // catalog_id → installed dir_name. Sourced from listInstalled() each refresh.
-  // Keyed by catalog_id (not dir_name) so two catalog rows that declare the
-  // same directory — e.g. EsoBR 2256 and the obsolete Reforged 4541 both
-  // ship `EsoBR_Reforged/` — don't both light up as "installed" when only
-  // one is actually on disk.
-  const [installedByCatalogId, setInstalledByCatalogId] = useState<Map<string, string>>(
-    new Map(),
-  );
+  // catalog_id → { dirName, installedAt }. Sourced from listInstalled() each
+  // refresh. Keyed by catalog_id (not dir_name) so two catalog rows that
+  // declare the same directory — e.g. EsoBR 2256 and the obsolete Reforged
+  // 4541 both ship `EsoBR_Reforged/` — don't both light up as "installed"
+  // when only one is actually on disk.
+  const [installedByCatalogId, setInstalledByCatalogId] = useState<
+    Map<string, { dirName: string; installedAt: string | null }>
+  >(new Map());
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
 
   useEffect(() => {
@@ -50,9 +50,14 @@ export function SearchPage() {
   const refreshInstalledSet = useCallback(async () => {
     try {
       const list = await api.listInstalled();
-      const next = new Map<string, string>();
+      const next = new Map<string, { dirName: string; installedAt: string | null }>();
       for (const a of list) {
-        if (a.catalog_id) next.set(a.catalog_id, a.dir_name);
+        if (a.catalog_id) {
+          next.set(a.catalog_id, {
+            dirName: a.dir_name,
+            installedAt: a.installed_at,
+          });
+        }
       }
       setInstalledByCatalogId(next);
     } catch {
@@ -173,13 +178,20 @@ export function SearchPage() {
   );
 
   const installedDirFor = useCallback(
-    (addon: Addon): string | null => installedByCatalogId.get(addon.id) ?? null,
+    (addon: Addon): string | null =>
+      installedByCatalogId.get(addon.id)?.dirName ?? null,
+    [installedByCatalogId],
+  );
+
+  const installedAtFor = useCallback(
+    (addon: Addon): string | null =>
+      installedByCatalogId.get(addon.id)?.installedAt ?? null,
     [installedByCatalogId],
   );
 
   const handleUninstall = useCallback(
     async (addon: Addon) => {
-      const dir = installedByCatalogId.get(addon.id);
+      const dir = installedByCatalogId.get(addon.id)?.dirName;
       if (!dir) return;
       setUninstallingDirs((prev) => {
         const next = new Set(prev);
@@ -197,7 +209,7 @@ export function SearchPage() {
 
   const isAddonUninstalling = useCallback(
     (addon: Addon) => {
-      const dir = installedByCatalogId.get(addon.id);
+      const dir = installedByCatalogId.get(addon.id)?.dirName;
       return dir ? uninstallingDirs.has(dir) : false;
     },
     [installedByCatalogId, uninstallingDirs],
@@ -351,6 +363,7 @@ export function SearchPage() {
           addon={selectedAddon}
           action={panelAction}
           installedDirName={installedDirFor(selectedAddon)}
+          installedAt={installedAtFor(selectedAddon)}
           onClose={() => setSelectedAddon(null)}
           onInstall={() => handleInstall(selectedAddon)}
         />
