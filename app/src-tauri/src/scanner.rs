@@ -103,6 +103,7 @@ fn empty(dir_name: &str) -> InstalledAddon {
         update_available: false,
         catalog_last_updated: None,
         installed_at: None,
+        unused_lib: false,
     }
 }
 
@@ -155,6 +156,7 @@ fn parse_manifest(path: &Path, fallback_name: &str) -> Result<InstalledAddon> {
         update_available: false,
         catalog_last_updated: None,
         installed_at: None,
+        unused_lib: false,
     })
 }
 

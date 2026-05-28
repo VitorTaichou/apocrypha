@@ -36,6 +36,7 @@ export interface InstalledAddon {
   update_available: boolean;
   catalog_last_updated: number | null;
   installed_at: string | null;
+  unused_lib: boolean;
 }
 
 export interface CatalogMeta {

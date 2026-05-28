@@ -157,6 +157,25 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
         }
     }
 
+    // Flag libraries that no other installed addon declares as a dependency.
+    // A "library" is a catalog row in the Libraries category (id 53) or, when
+    // no catalog row matches, a directory whose name starts with `Lib`. ESO
+    // matches dependency directories case-insensitively, so do the same.
+    const LIBRARIES_CATEGORY_ID: &str = "53";
+    let depended_upon: std::collections::HashSet<String> = installed
+        .iter()
+        .flat_map(|a| a.depends_on.iter().chain(a.optional_depends_on.iter()))
+        .map(|d| d.to_lowercase())
+        .collect();
+    for a in installed.iter_mut() {
+        let is_library = match (a.category_id.as_deref(), a.catalog_id.as_deref()) {
+            (Some(cat), _) => cat == LIBRARIES_CATEGORY_ID,
+            (None, None) => a.dir_name.starts_with("Lib") || a.dir_name.starts_with("lib"),
+            _ => false,
+        };
+        a.unused_lib = is_library && !depended_upon.contains(&a.dir_name.to_lowercase());
+    }
+
     Ok(installed)
 }
 

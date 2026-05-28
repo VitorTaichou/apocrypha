@@ -41,6 +41,10 @@ pub struct InstalledAddon {
     pub update_available: bool,
     pub catalog_last_updated: Option<i64>,
     pub installed_at: Option<String>,
+    /// A library (catalog category "Libraries", or `Lib*` directory with no
+    /// catalog match) that no other installed addon depends on. Usually safe
+    /// to uninstall — left behind when the addon that needed it was removed.
+    pub unused_lib: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

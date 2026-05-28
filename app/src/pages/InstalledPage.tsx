@@ -148,6 +148,11 @@ export function InstalledPage() {
     [addons],
   );
 
+  const unusedLibs = useMemo(
+    () => addons?.filter((a) => a.unused_lib).length ?? 0,
+    [addons],
+  );
+
   const filteredAddons = useMemo(() => {
     if (!addons) return null;
     const q = query.trim().toLowerCase();
@@ -212,6 +217,10 @@ export function InstalledPage() {
               ? `${addons.length} addon${addons.length === 1 ? "" : "s"} in your library${
                   updatesAvailable > 0
                     ? ` · ${updatesAvailable} update${updatesAvailable === 1 ? "" : "s"} available`
+                    : ""
+                }${
+                  unusedLibs > 0
+                    ? ` · ${unusedLibs} unused librar${unusedLibs === 1 ? "y" : "ies"}`
                     : ""
                 }`
               : "Your library, updates, and dependency health."

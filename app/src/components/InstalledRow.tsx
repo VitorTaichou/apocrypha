@@ -195,6 +195,14 @@ export function InstalledRow({
               v{addon.version}
             </span>
           ) : null}
+          {addon.unused_lib ? (
+            <span
+              title="No other installed addon depends on this library — safe to uninstall."
+              className="shrink-0 rounded-sm border border-[var(--color-outline-variant)] bg-[var(--color-surface-high)]/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--color-tertiary)]"
+            >
+              Unused
+            </span>
+          ) : null}
         </div>
         <p className="truncate text-xs text-[var(--color-on-surface-variant)]">
           {addon.author ? `by ${addon.author}` : addon.dir_name}
