@@ -38,8 +38,27 @@ Two halves communicating via Tauri IPC commands and broadcast events.
 - **`db.rs`** — SQLite catalog at `%APPDATA%/Apocrypha/catalog.db`. WAL mode. Idempotent `ALTER TABLE` migrations on `addons` for new columns (currently `thumbnail_url`, `images`). `find_by_directory` is the bridge from local installed dirs back to catalog entries.
 - **`scanner.rs`** — Walks `<Documents>/Elder Scrolls Online/live/AddOns/`, parses `.txt` / `.addon` manifests (`## Title`, `## Version`, `## DependsOn`, etc.). Strips ESO color codes (`|cRRGGBB...|r`) and handles lossy UTF-8.
 - **`installer.rs`** — Install/uninstall pipeline. **Two-pass extraction**: pass 1 validates entries and gathers root dirs; **pre-clean deletes each existing target dir before extracting** (this is what made `LibAddonMenu-2.0` actually update — old `Foo.txt` no longer lingers when the new release ships `Foo.addon`); pass 2 extracts. Path-traversal defense in depth: `enclosed_name()` + explicit `Component::ParentDir/Prefix/RootDir` rejection. Uninstall uses `canonicalize()` to confirm target lives inside `addons_dir` before `remove_dir_all`. Dependencies resolve recursively via `find_by_directory` with a visited `HashSet`.
-- **`commands.rs`** — Tauri command wrappers. Async commands emit events for the frontend: `catalog:sync:{start,done,error}`, `addon:install:{start,progress,done,error}`, `addon:uninstall:{done,error}`.
+- **`commands.rs`** — Tauri command wrappers. Async commands emit events for the frontend: `catalog:sync:{start,done,error}`, `addon:install:{start,progress,done,error}`, `addon:uninstall:{done,error}`. Also hosts `enumerate_installed`, which resolves each on-disk addon to a catalog row (see below).
 - **`models.rs`** — Shared serde types (`Addon`, `Category`, `InstalledAddon`, `CatalogMeta`, `SearchResult`). Keep mirrored in `src/lib/types.ts`.
+
+### Installed-row resolution (`commands.rs::enumerate_installed`)
+
+Multiple catalog rows can declare the same directory (translation packs, patches, abandoned originals shadowed by a maintained fork). To pick the row that actually represents what's on disk:
+
+1. **Anchor on the local manifest version.** If any catalog row sharing the directory has a version string matching `## Version:` from the on-disk manifest, use it. The manifest beats both a stale pin and the recency heuristic.
+2. **Honor the explicit pin.** `installed_dir:{dir} → catalog_id` is written at install time; respect it when the manifest can't anchor.
+3. **Fork-successor fallback.** No pin, no manifest match: pick the row with the most recent `last_updated` (covers manual / legacy installs in contested dirs).
+
+When manifest resolution picks a row that disagrees with the existing pin, the corrected pin is persisted in the same pass so subsequent install / uninstall / update commands target the right catalog id.
+
+### Update detection (same function)
+
+`update_available` is the OR of two independent signals:
+
+- **Marker signal** — catalog `last_updated` moved since we installed (caught by the `installed:{catalog_id}` marker written at install time). Catches authors who re-publish on ESOUI without bumping the manifest `## Version:` string.
+- **Version signal** — local manifest `## Version:` differs from the catalog's UIVersion. Catches the opposite: authors who bump the listing without re-uploading the file (and zips that ship a stale manifest).
+
+Either signal diverging means an update is needed. Mirrors Minion's behavior.
 
 ### React frontend (`app/src/`)
 

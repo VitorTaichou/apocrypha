@@ -38,27 +38,54 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             // addons placed manually by the user.
             let pinned_id = db::get_metadata(&conn, &format!("installed_dir:{}", a.dir_name))
                 .filter(|s| !s.is_empty());
-            let resolved_initial = match pinned_id {
-                Some(id) => db::find_by_id(&conn, &id).ok().flatten(),
-                None => db::find_by_directory(&conn, &a.dir_name).ok().flatten(),
-            };
 
-            // Fork-successor detection: when two catalog rows declare the
-            // same directory (e.g. PerfectWeave 2918 abandoned, 4468 bugfix
-            // re-upload), point at the one with the most recent `last_updated`.
-            // Matches what Minion shows — a maintained fork supersedes the
-            // original. Falls back to the originally resolved row when there's
-            // no better candidate.
-            let resolved = resolved_initial.map(|initial| {
-                match db::find_all_by_directory(&conn, &a.dir_name) {
-                    Ok(all) if all.len() > 1 => all
-                        .into_iter()
-                        .max_by_key(|x| x.last_updated)
-                        .filter(|best| best.last_updated > initial.last_updated)
-                        .unwrap_or(initial),
-                    _ => initial,
-                }
+            // Resolve which catalog row this directory actually belongs to.
+            //
+            // Anchor on the on-disk manifest version when possible: if any
+            // catalog row sharing the dir has a version string matching what's
+            // on disk, that's the truly installed one. The manifest beats both
+            // a stale pin (Azurah-KR translation pack pinned over a healthy
+            // Azurah - Interface Enhanced install) and a "fork-successor"
+            // heuristic that would otherwise prefer the most recently-updated
+            // sibling (some translations re-publish more aggressively than the
+            // original addon, e.g. Azurah-KR > Azurah by `last_updated`).
+            //
+            // When the manifest anchors a different row than the current pin,
+            // persist the corrected pin so future install / uninstall / update
+            // commands target the right catalog id.
+            //
+            // Fallbacks: honor the pin (user's explicit install choice) > pick
+            // the most recently updated sibling (legacy / manual installs in
+            // a contested directory) > single row > nothing (orphan).
+            let all = db::find_all_by_directory(&conn, &a.dir_name).unwrap_or_default();
+            let by_manifest = a.version.as_deref().and_then(|local| {
+                let lv = normalize_version(local);
+                all.iter()
+                    .filter(|x| normalize_version(&x.version) == lv)
+                    .max_by_key(|x| x.last_updated)
+                    .cloned()
             });
+            let resolved = if let Some(matched) = by_manifest {
+                if pinned_id.as_deref() != Some(&matched.id) {
+                    let _ = db::set_metadata(
+                        &conn,
+                        &format!("installed_dir:{}", a.dir_name),
+                        &matched.id,
+                    );
+                }
+                Some(matched)
+            } else {
+                match pinned_id {
+                    Some(id) => db::find_by_id(&conn, &id).ok().flatten(),
+                    None => {
+                        if all.len() > 1 {
+                            all.into_iter().max_by_key(|x| x.last_updated)
+                        } else {
+                            all.into_iter().next()
+                        }
+                    }
+                }
+            };
 
             if let Some(addon) = resolved {
                 if let Some(marker) =
@@ -98,17 +125,20 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             a.catalog_last_updated = if m.last_updated > 0 { Some(m.last_updated) } else { None };
             a.installed_at = install_timestamps.get(&m.id).cloned();
 
-            // Decide "up to date" depending on what we know about this addon:
+            // Decide "up to date" by OR-ing two independent signals — either
+            // diverging means an update is needed. Matches Minion.
             //
-            // - If we have a marker (= we installed it ourselves), trust ONLY
-            //   the marker. Compare the catalog's last_updated against the
-            //   timestamp we recorded at install time. Catches the case where
-            //   an author re-publishes on ESOUI without bumping the manifest
-            //   string — Minion flags those as updatable, and so should we.
+            // - Marker signal: the catalog's `last_updated` moved since we
+            //   installed. Catches re-publishes that don't bump the manifest
+            //   `## Version:` (the file changed but the version string didn't).
             //
-            // - If we don't have a marker (addon was placed manually / by
-            //   another manager), fall back to string equality on the version
-            //   line. Best we can do without an install timestamp of our own.
+            // - Version signal: the local manifest's `## Version:` doesn't
+            //   match the catalog's UIVersion string. Catches the opposite —
+            //   the author bumped UIVersion on ESOUI but the zip they uploaded
+            //   still ships the old manifest (e.g. Quest Tracker Toggle: catalog
+            //   says 1.4, the zip's manifest says 1.0). Marker alone would let
+            //   this slip through because the catalog timestamp didn't move
+            //   between when we installed and now.
             //
             // Older builds stored UIDate in milliseconds; new builds store
             // unix-seconds. Normalize both sides so we compare apples-to-apples
@@ -116,14 +146,14 @@ pub fn enumerate_installed(state: &AppState) -> anyhow::Result<Vec<InstalledAddo
             let normalize = |t: i64| if t > 100_000_000_000 { t / 1000 } else { t };
             let marker = install_markers.get(&m.id).copied().unwrap_or(0);
             let has_marker = marker > 0;
-            a.update_available = if has_marker {
-                normalize(marker) != normalize(m.last_updated)
-            } else {
-                match a.version.as_deref() {
-                    Some(local) => normalize_version(local) != normalize_version(&m.version),
-                    None => true,
-                }
+            let marker_diff = has_marker && normalize(marker) != normalize(m.last_updated);
+            let version_diff = match a.version.as_deref() {
+                Some(local) => normalize_version(local) != normalize_version(&m.version),
+                // No manifest version line on disk: trust the marker if we
+                // have one, otherwise flag as needing attention.
+                None => !has_marker,
             };
+            a.update_available = marker_diff || version_diff;
         }
     }
 
