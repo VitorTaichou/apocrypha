@@ -283,8 +283,24 @@ pub async fn sync_catalog(
     }
 }
 
+/// Compare two version strings by their numeric tokens only, ignoring
+/// punctuation and alphabetic noise. Authors routinely write something like
+/// `## Version: 1.0.47` in the manifest while ESOUI's `UIVersion` for the
+/// listing comes out as `1.0 r47` (or vice versa). The previous behavior of
+/// only stripping a leading `v` left those two as permanently different,
+/// keeping rows like LibMapPins stuck on "Update available" forever — every
+/// click reinstalled the same zip whose manifest still spelled the version
+/// the old way, so the loop never broke.
+///
+/// Real version bumps still differ in their digit tokens (e.g. catalog `1.4`
+/// vs manifest `1.0` → `["1","4"]` vs `["1","0"]`), so the version-diff
+/// signal still catches the "author bumped UIVersion but uploaded a zip with
+/// the old manifest" case noted in `enumerate_installed`.
 fn normalize_version(v: &str) -> String {
-    v.trim().trim_start_matches('v').trim_start_matches('V').to_string()
+    v.split(|c: char| !c.is_ascii_digit())
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 #[tauri::command]
