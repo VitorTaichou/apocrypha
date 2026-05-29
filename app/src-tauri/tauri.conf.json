@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Apocrypha",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "identifier": "com.apocrypha.archivist",
   "build": {
     "beforeDevCommand": "npm run dev",
